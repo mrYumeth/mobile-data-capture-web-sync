@@ -1,3 +1,5 @@
+import 'master_data_screen.dart';
+
 import 'package:flutter/material.dart';
 
 import 'login_screen.dart';
@@ -42,7 +44,11 @@ class HomeScreen extends StatelessWidget {
         title: 'Master Data',
         subtitle: 'View locally stored customers, locations and categories',
         icon: Icons.storage_outlined,
-        onTap: () => _showComingSoon(context, 'Master data screen'),
+        onTap: () {
+          Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const MasterDataScreen()));
+        },
       ),
     ];
 
