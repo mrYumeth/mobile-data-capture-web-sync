@@ -207,4 +207,32 @@ class LocalDatabaseService {
       );
     }).toList();
   }
+
+  Future<int> insertCapturedRecord({
+    required int customerId,
+    required int locationId,
+    required int categoryId,
+    required String description,
+    required double latitude,
+    required double longitude,
+    required String imagePath,
+  }) async {
+    final db = await database;
+    final now = DateTime.now().toIso8601String();
+
+    return db.insert('captured_records', {
+      'customer_id': customerId,
+      'location_id': locationId,
+      'category_id': categoryId,
+      'description': description,
+      'latitude': latitude,
+      'longitude': longitude,
+      'image_path': imagePath,
+      'captured_at': now,
+      'sync_status': 'Pending Sync',
+      'server_id': null,
+      'created_at': now,
+      'updated_at': now,
+    });
+  }
 }

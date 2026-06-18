@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 
 import 'login_screen.dart';
 
+import 'data_capture_screen.dart';
+
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
@@ -26,7 +28,11 @@ class HomeScreen extends StatelessWidget {
         title: 'Capture New Record',
         subtitle: 'Capture customer, location, notes, GPS and image',
         icon: Icons.add_location_alt_outlined,
-        onTap: () => _showComingSoon(context, 'Data capture form'),
+        onTap: () {
+          Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const DataCaptureScreen()));
+        },
       ),
       _HomeAction(
         title: 'View Local Records',
