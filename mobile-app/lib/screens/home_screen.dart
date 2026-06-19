@@ -6,6 +6,8 @@ import 'login_screen.dart';
 
 import 'data_capture_screen.dart';
 
+import 'local_records_screen.dart';
+
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
@@ -38,7 +40,11 @@ class HomeScreen extends StatelessWidget {
         title: 'View Local Records',
         subtitle: 'View records saved locally in SQLite',
         icon: Icons.list_alt_outlined,
-        onTap: () => _showComingSoon(context, 'Local records list'),
+        onTap: () {
+          Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const LocalRecordsScreen()));
+        },
       ),
       _HomeAction(
         title: 'Sync Pending Records',

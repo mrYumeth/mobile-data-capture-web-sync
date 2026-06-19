@@ -3,6 +3,8 @@ import 'package:sqflite/sqflite.dart';
 
 import '../models/master_data_item.dart';
 
+import '../models/captured_record.dart';
+
 class LocalDatabaseService {
   static final LocalDatabaseService instance = LocalDatabaseService._internal();
 
@@ -234,5 +236,71 @@ class LocalDatabaseService {
       'created_at': now,
       'updated_at': now,
     });
+  }
+
+  Future<List<CapturedRecord>> getCapturedRecords() async {
+    final db = await database;
+
+    final result = await db.rawQuery('''
+    SELECT
+      cr.id,
+      cr.customer_id,
+      cr.location_id,
+      cr.category_id,
+      c.name AS customer_name,
+      l.name AS location_name,
+      cat.name AS category_name,
+      cr.description,
+      cr.latitude,
+      cr.longitude,
+      cr.image_path,
+      cr.captured_at,
+      cr.sync_status,
+      cr.server_id
+    FROM captured_records cr
+    INNER JOIN customers c ON c.id = cr.customer_id
+    INNER JOIN locations l ON l.id = cr.location_id
+    INNER JOIN categories cat ON cat.id = cr.category_id
+    ORDER BY cr.id DESC
+  ''');
+
+    return result.map((row) => CapturedRecord.fromMap(row)).toList();
+  }
+
+  Future<CapturedRecord?> getCapturedRecordById(int id) async {
+    final db = await database;
+
+    final result = await db.rawQuery(
+      '''
+    SELECT
+      cr.id,
+      cr.customer_id,
+      cr.location_id,
+      cr.category_id,
+      c.name AS customer_name,
+      l.name AS location_name,
+      cat.name AS category_name,
+      cr.description,
+      cr.latitude,
+      cr.longitude,
+      cr.image_path,
+      cr.captured_at,
+      cr.sync_status,
+      cr.server_id
+    FROM captured_records cr
+    INNER JOIN customers c ON c.id = cr.customer_id
+    INNER JOIN locations l ON l.id = cr.location_id
+    INNER JOIN categories cat ON cat.id = cr.category_id
+    WHERE cr.id = ?
+    LIMIT 1
+    ''',
+      [id],
+    );
+
+    if (result.isEmpty) {
+      return null;
+    }
+
+    return CapturedRecord.fromMap(result.first);
   }
 }
