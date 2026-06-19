@@ -3,10 +3,18 @@ const pool = require('../config/db');
 
 const router = express.Router();
 
+function isValidPhoneNumber(phone) {
+  if (!phone) {
+    return true;
+  }
+
+  return /^\d{10}$/.test(phone);
+}
+
 router.get('/', async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT * FROM customers WHERE is_active = TRUE ORDER BY id DESC'
+      'SELECT * FROM customers ORDER BY id DESC'
     );
 
     res.json(result.rows);
@@ -22,9 +30,15 @@ router.post('/', async (req, res) => {
   try {
     const { name, phone, email, address } = req.body;
 
-    if (!name) {
+    if (!name || !name.trim()) {
       return res.status(400).json({
         message: 'Customer name is required',
+      });
+    }
+
+    if (!isValidPhoneNumber(phone)) {
+      return res.status(400).json({
+        message: 'Phone number must contain exactly 10 digits',
       });
     }
 
@@ -32,7 +46,7 @@ router.post('/', async (req, res) => {
       `INSERT INTO customers (name, phone, email, address)
        VALUES ($1, $2, $3, $4)
        RETURNING *`,
-      [name, phone, email, address]
+      [name.trim(), phone || null, email || null, address || null]
     );
 
     res.status(201).json(result.rows[0]);
@@ -49,6 +63,18 @@ router.put('/:id', async (req, res) => {
     const { id } = req.params;
     const { name, phone, email, address } = req.body;
 
+    if (!name || !name.trim()) {
+      return res.status(400).json({
+        message: 'Customer name is required',
+      });
+    }
+
+    if (!isValidPhoneNumber(phone)) {
+      return res.status(400).json({
+        message: 'Phone number must contain exactly 10 digits',
+      });
+    }
+
     const result = await pool.query(
       `UPDATE customers
        SET name = $1,
@@ -58,7 +84,7 @@ router.put('/:id', async (req, res) => {
            updated_at = CURRENT_TIMESTAMP
        WHERE id = $5
        RETURNING *`,
-      [name, phone, email, address, id]
+      [name.trim(), phone || null, email || null, address || null, id]
     );
 
     if (result.rows.length === 0) {
@@ -81,11 +107,7 @@ router.delete('/:id', async (req, res) => {
     const { id } = req.params;
 
     const result = await pool.query(
-      `UPDATE customers
-       SET is_active = FALSE,
-           updated_at = CURRENT_TIMESTAMP
-       WHERE id = $1
-       RETURNING *`,
+      'DELETE FROM customers WHERE id = $1 RETURNING *',
       [id]
     );
 
@@ -97,6 +119,7 @@ router.delete('/:id', async (req, res) => {
 
     res.json({
       message: 'Customer deleted successfully',
+      deletedCustomer: result.rows[0],
     });
   } catch (error) {
     res.status(500).json({
