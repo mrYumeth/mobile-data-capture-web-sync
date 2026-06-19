@@ -8,6 +8,8 @@ import 'data_capture_screen.dart';
 
 import 'local_records_screen.dart';
 
+import 'sync_status_screen.dart';
+
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
@@ -48,9 +50,13 @@ class HomeScreen extends StatelessWidget {
       ),
       _HomeAction(
         title: 'Sync Pending Records',
-        subtitle: 'Upload pending records when internet is available',
+        subtitle: 'View pending, synced and failed local records',
         icon: Icons.sync_outlined,
-        onTap: () => _showComingSoon(context, 'Sync feature'),
+        onTap: () {
+          Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const SyncStatusScreen()));
+        },
       ),
       _HomeAction(
         title: 'Master Data',

@@ -303,4 +303,39 @@ class LocalDatabaseService {
 
     return CapturedRecord.fromMap(result.first);
   }
+
+  Future<int> getCapturedRecordCount() async {
+    final db = await database;
+
+    final result = await db.rawQuery(
+      'SELECT COUNT(*) AS count FROM captured_records',
+    );
+
+    return Sqflite.firstIntValue(result) ?? 0;
+  }
+
+  Future<int> getCapturedRecordCountByStatus(String status) async {
+    final db = await database;
+
+    final result = await db.rawQuery(
+      'SELECT COUNT(*) AS count FROM captured_records WHERE sync_status = ?',
+      [status],
+    );
+
+    return Sqflite.firstIntValue(result) ?? 0;
+  }
+
+  Future<Map<String, int>> getSyncStatusCounts() async {
+    final total = await getCapturedRecordCount();
+    final pending = await getCapturedRecordCountByStatus('Pending Sync');
+    final synced = await getCapturedRecordCountByStatus('Synced');
+    final failed = await getCapturedRecordCountByStatus('Sync Failed');
+
+    return {
+      'total': total,
+      'pending': pending,
+      'synced': synced,
+      'failed': failed,
+    };
+  }
 }
