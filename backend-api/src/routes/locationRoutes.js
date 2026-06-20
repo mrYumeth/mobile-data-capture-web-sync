@@ -79,11 +79,7 @@ router.delete('/:id', async (req, res) => {
     const { id } = req.params;
 
     const result = await pool.query(
-      `UPDATE locations
-       SET is_active = FALSE,
-           updated_at = CURRENT_TIMESTAMP
-       WHERE id = $1
-       RETURNING *`,
+      'DELETE FROM locations WHERE id = $1 RETURNING *',
       [id]
     );
 
@@ -95,6 +91,7 @@ router.delete('/:id', async (req, res) => {
 
     res.json({
       message: 'Location deleted successfully',
+      deletedLocation: result.rows[0],
     });
   } catch (error) {
     res.status(500).json({

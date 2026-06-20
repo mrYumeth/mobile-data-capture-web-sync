@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import DashboardPage from './pages/DashboardPage'
 import CustomersPage from './pages/CustomersPage'
+import LocationsPage from './pages/LocationsPage';
+import CategoriesPage from './pages/CategoriesPage';
 
 const navigation = [
   { key: 'dashboard', label: 'Dashboard' },
@@ -18,9 +20,9 @@ function App() {
       case 'customers':
         return <CustomersPage />
       case 'locations':
-        return <PlaceholderPage title="Location Master" />
+        return <LocationsPage />
       case 'categories':
-        return <PlaceholderPage title="Category Master" />
+        return <CategoriesPage />
       case 'capturedRecords':
         return <PlaceholderPage title="Captured Records" />
       default:

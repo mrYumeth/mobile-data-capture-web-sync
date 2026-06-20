@@ -45,6 +45,58 @@ export const customerApi = {
   },
 }
 
+export const locationApi = {
+  getAll() {
+    return request('/api/locations');
+  },
+
+  create(location) {
+    return request('/api/locations', {
+      method: 'POST',
+      body: JSON.stringify(location),
+    });
+  },
+
+  update(id, location) {
+    return request(`/api/locations/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(location),
+    });
+  },
+
+  remove(id) {
+    return request(`/api/locations/${id}`, {
+      method: 'DELETE',
+    });
+  },
+};
+
+export const categoryApi = {
+  getAll() {
+    return request('/api/categories');
+  },
+
+  create(category) {
+    return request('/api/categories', {
+      method: 'POST',
+      body: JSON.stringify(category),
+    });
+  },
+
+  update(id, category) {
+    return request(`/api/categories/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(category),
+    });
+  },
+
+  remove(id) {
+    return request(`/api/categories/${id}`, {
+      method: 'DELETE',
+    });
+  },
+};
+
 export const dashboardApi = {
   async getSummary() {
     const [customers, locations, categories, capturedRecords] =
