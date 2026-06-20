@@ -29,11 +29,11 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <aside className="fixed inset-y-0 left-0 hidden w-64 bg-gray-900 text-white lg:block">
+    <div className="min-h-screen bg-[#F8FAFC]">
+      <aside className="fixed inset-y-0 left-0 hidden w-64 bg-[#0F172A] text-white lg:block">
         <div className="border-b border-gray-800 p-6">
-          <h1 className="text-xl font-bold">Data Capture</h1>
-          <p className="mt-1 text-sm text-gray-400">Web Sync Console</p>
+          <h1 className="text-xl font-bold">FieldSync</h1>
+            <p className="mt-1 text-sm text-slate-400">Web Sync Console</p>
         </div>
 
         <nav className="space-y-1 p-4">
@@ -44,7 +44,7 @@ function App() {
               onClick={() => setActivePage(item.key)}
               className={`w-full rounded-lg px-4 py-3 text-left text-sm font-medium transition ${
                 activePage === item.key
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-[#2563EB] text-white'
                   : 'text-gray-300 hover:bg-gray-800 hover:text-white'
               }`}
             >
@@ -55,14 +55,14 @@ function App() {
       </aside>
 
       <div className="lg:pl-64">
-        <header className="sticky top-0 z-10 border-b bg-white px-4 py-4 shadow-sm lg:px-8">
+        <header className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-white px-4 py-4 shadow-sm lg:px-8">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <h2 className="text-lg font-semibold text-gray-900">
-                Mobile Data Capture and Web Sync Prototype
+                FieldSync Data Capture Platform
               </h2>
               <p className="text-sm text-gray-500">
-                Master data management and captured record monitoring
+                Offline mobile data capture and cloud synchronization console
               </p>
             </div>
 
@@ -74,7 +74,7 @@ function App() {
                   onClick={() => setActivePage(item.key)}
                   className={`rounded-lg px-3 py-2 text-sm font-medium ${
                     activePage === item.key
-                      ? 'bg-blue-600 text-white'
+                      ? 'bg-[#2563EB] text-white'
                       : 'bg-gray-100 text-gray-700'
                   }`}
                 >
@@ -101,7 +101,7 @@ function PlaceholderPage({ title }) {
         </p>
       </div>
 
-      <div className="rounded-xl bg-white p-6 shadow-sm">
+      <div className="app-card p-6">
         Coming soon
       </div>
     </div>

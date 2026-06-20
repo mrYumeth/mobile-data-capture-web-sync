@@ -2,18 +2,17 @@ import 'package:flutter/material.dart';
 
 import '../screens/login_screen.dart';
 
+import 'app_theme.dart';
+
 class MobileDataCaptureApp extends StatelessWidget {
   const MobileDataCaptureApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Mobile Data Capture',
+      title: 'FieldSync',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
-        useMaterial3: true,
-      ),
+      theme: AppTheme.lightTheme,
       home: const LoginScreen(),
     );
   }

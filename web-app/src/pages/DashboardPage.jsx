@@ -30,7 +30,7 @@ function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="rounded-xl bg-white p-6 shadow-sm">
+      <div className="app-card p-6">
         Loading dashboard summary...
       </div>
     )
@@ -79,7 +79,7 @@ function DashboardPage() {
 
 function SummaryCard({ title, value, description }) {
   return (
-    <div className="rounded-xl bg-white p-6 shadow-sm">
+    <div className="app-card p-6">
       <p className="text-sm font-medium text-gray-500">{title}</p>
       <p className="mt-3 text-3xl font-bold text-gray-900">{value}</p>
       <p className="mt-2 text-sm text-gray-500">{description}</p>

@@ -148,7 +148,7 @@ function handleChange(event) {
       )}
 
       <div className="grid gap-6 xl:grid-cols-[380px_1fr]">
-        <div className="rounded-xl bg-white p-6 shadow-sm">
+        <div className="app-card p-6">
           <h2 className="mb-4 text-lg font-semibold text-gray-900">
             {editingCustomerId ? 'Edit Customer' : 'Add Customer'}
           </h2>
@@ -197,7 +197,7 @@ function handleChange(event) {
               <button
                 type="submit"
                 disabled={saving}
-                className="rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+                className="rounded-lg bg-[#2563EB] px-4 py-2 font-medium text-white hover:bg-[#1D4ED8] disabled:opacity-60"
               >
                 {saving
                   ? 'Saving...'
@@ -219,7 +219,7 @@ function handleChange(event) {
           </form>
         </div>
 
-        <div className="rounded-xl bg-white p-6 shadow-sm">
+        <div className="app-card p-6">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-gray-900">
               Customer List
