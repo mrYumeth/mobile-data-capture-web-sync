@@ -57,7 +57,7 @@ function App() {
         </nav>
       </aside>
 
-      <div className="lg:pl-64">
+      <div className="min-w-0 lg:pl-64">
         <header className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-white px-4 py-4 shadow-sm lg:px-8">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div>
@@ -88,7 +88,9 @@ function App() {
           </div>
         </header>
 
-        <main className="p-4 lg:p-8">{renderPage()}</main>
+      <main className="min-w-0 overflow-x-hidden p-4 lg:p-8">
+        {renderPage()}
+      </main>
       </div>
     </div>
   )

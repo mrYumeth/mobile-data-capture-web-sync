@@ -57,9 +57,9 @@ function CapturedRecordsPage() {
   }
 
   return (
-    <div>
+    <div className="min-w-0">
       <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold text-gray-900">
             Captured Records
           </h1>
@@ -71,7 +71,7 @@ function CapturedRecordsPage() {
         <button
           type="button"
           onClick={loadRecords}
-          className="rounded-lg border border-gray-300 bg-white px-4 py-2 font-medium text-gray-700 hover:bg-gray-50"
+          className="w-fit rounded-lg border border-gray-300 bg-white px-4 py-2 font-medium text-gray-700 hover:bg-gray-50"
         >
           Refresh
         </button>
@@ -83,8 +83,8 @@ function CapturedRecordsPage() {
         </div>
       )}
 
-      <div className="grid gap-6 xl:grid-cols-[1fr_420px]">
-        <div className="app-card p-6">
+      <div className="grid min-w-0 grid-cols-1 gap-6 2xl:grid-cols-[minmax(0,1fr)_420px]">
+        <div className="app-card min-w-0 p-6">
           <h2 className="mb-4 text-lg font-semibold text-gray-900">
             Uploaded Records List
           </h2>
@@ -101,8 +101,8 @@ function CapturedRecordsPage() {
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-left text-sm">
+            <div className="w-full overflow-x-auto">
+              <table className="w-full min-w-[760px] border-collapse text-left text-sm">
                 <thead>
                   <tr className="border-b bg-gray-50">
                     <TableHeader>ID</TableHeader>
@@ -141,8 +141,8 @@ function CapturedRecordsPage() {
           )}
         </div>
 
-        <div className="app-card p-6">
-          <div className="mb-4 flex items-center justify-between">
+        <div className="app-card min-w-0 p-6">
+          <div className="mb-4 flex items-center justify-between gap-3">
             <h2 className="text-lg font-semibold text-gray-900">
               Record Details
             </h2>
@@ -225,7 +225,7 @@ function RecordDetails({ record, formatDateTime }) {
             <img
               src={imageUrl}
               alt="Captured field record"
-              className="h-64 w-full rounded-xl border border-gray-200 object-cover"
+              className="max-h-72 w-full rounded-xl border border-gray-200 object-cover"
             />
           </a>
         ) : (
@@ -244,7 +244,7 @@ function DetailSection({ title, children }) {
       <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-gray-500">
         {title}
       </h3>
-      <div className="rounded-lg border border-gray-200">
+      <div className="overflow-hidden rounded-lg border border-gray-200">
         {children}
       </div>
     </div>
@@ -253,9 +253,11 @@ function DetailSection({ title, children }) {
 
 function DetailRow({ label, value }) {
   return (
-    <div className="grid grid-cols-[120px_1fr] border-b border-gray-200 px-4 py-3 last:border-b-0">
+    <div className="grid grid-cols-1 gap-1 border-b border-gray-200 px-4 py-3 last:border-b-0 sm:grid-cols-[130px_1fr]">
       <span className="font-medium text-gray-600">{label}</span>
-      <span className="text-gray-900">{value || '-'}</span>
+      <span className="min-w-0 break-words text-gray-900">
+        {value || '-'}
+      </span>
     </div>
   );
 }
@@ -269,7 +271,11 @@ function TableHeader({ children }) {
 }
 
 function TableCell({ children }) {
-  return <td className="whitespace-nowrap px-4 py-3 text-gray-700">{children}</td>;
+  return (
+    <td className="px-4 py-3 text-gray-700">
+      <div className="max-w-[180px] truncate">{children}</div>
+    </td>
+  );
 }
 
 export default CapturedRecordsPage;
