@@ -338,4 +338,57 @@ class LocalDatabaseService {
       'failed': failed,
     };
   }
+
+  Future<void> upsertCustomers(List<Map<String, dynamic>> customers) async {
+    final db = await database;
+    final batch = db.batch();
+
+    for (final customer in customers) {
+      batch.insert('customers', {
+        'id': customer['id'],
+        'name': customer['name'],
+        'phone': customer['phone'],
+        'email': customer['email'],
+        'address': customer['address'],
+        'created_at': customer['created_at'],
+        'updated_at': customer['updated_at'],
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+    }
+
+    await batch.commit(noResult: true);
+  }
+
+  Future<void> upsertLocations(List<Map<String, dynamic>> locations) async {
+    final db = await database;
+    final batch = db.batch();
+
+    for (final location in locations) {
+      batch.insert('locations', {
+        'id': location['id'],
+        'name': location['name'],
+        'address': location['address'],
+        'created_at': location['created_at'],
+        'updated_at': location['updated_at'],
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+    }
+
+    await batch.commit(noResult: true);
+  }
+
+  Future<void> upsertCategories(List<Map<String, dynamic>> categories) async {
+    final db = await database;
+    final batch = db.batch();
+
+    for (final category in categories) {
+      batch.insert('categories', {
+        'id': category['id'],
+        'name': category['name'],
+        'description': category['description'],
+        'created_at': category['created_at'],
+        'updated_at': category['updated_at'],
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+    }
+
+    await batch.commit(noResult: true);
+  }
 }
