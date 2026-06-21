@@ -391,4 +391,62 @@ class LocalDatabaseService {
 
     await batch.commit(noResult: true);
   }
+
+  Future<List<CapturedRecord>> getPendingSyncRecords() async {
+    final db = await database;
+
+    final result = await db.rawQuery('''
+    SELECT
+      cr.id,
+      cr.customer_id,
+      cr.location_id,
+      cr.category_id,
+      c.name AS customer_name,
+      l.name AS location_name,
+      cat.name AS category_name,
+      cr.description,
+      cr.latitude,
+      cr.longitude,
+      cr.image_path,
+      cr.captured_at,
+      cr.sync_status,
+      cr.server_id
+    FROM captured_records cr
+    INNER JOIN customers c ON c.id = cr.customer_id
+    INNER JOIN locations l ON l.id = cr.location_id
+    INNER JOIN categories cat ON cat.id = cr.category_id
+    WHERE cr.sync_status = 'Pending Sync'
+       OR cr.sync_status = 'Sync Failed'
+    ORDER BY cr.id ASC
+  ''');
+
+    return result.map((row) => CapturedRecord.fromMap(row)).toList();
+  }
+
+  Future<void> markCapturedRecordAsSynced({
+    required int localId,
+    required int serverId,
+  }) async {
+    final db = await database;
+    final now = DateTime.now().toIso8601String();
+
+    await db.update(
+      'captured_records',
+      {'sync_status': 'Synced', 'server_id': serverId, 'updated_at': now},
+      where: 'id = ?',
+      whereArgs: [localId],
+    );
+  }
+
+  Future<void> markCapturedRecordAsSyncFailed({required int localId}) async {
+    final db = await database;
+    final now = DateTime.now().toIso8601String();
+
+    await db.update(
+      'captured_records',
+      {'sync_status': 'Sync Failed', 'updated_at': now},
+      where: 'id = ?',
+      whereArgs: [localId],
+    );
+  }
 }
