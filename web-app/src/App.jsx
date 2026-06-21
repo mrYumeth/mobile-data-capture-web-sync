@@ -1,121 +1,115 @@
 import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import DashboardPage from './pages/DashboardPage'
+import CustomersPage from './pages/CustomersPage'
+import LocationsPage from './pages/LocationsPage';
+import CategoriesPage from './pages/CategoriesPage';
+import CapturedRecordsPage from './pages/CapturedRecordsPage';
+
+const navigation = [
+  { key: 'dashboard', label: 'Dashboard' },
+  { key: 'customers', label: 'Customers' },
+  { key: 'locations', label: 'Locations' },
+  { key: 'categories', label: 'Categories' },
+  { key: 'capturedRecords', label: 'Captured Records' },
+]
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [activePage, setActivePage] = useState('dashboard')
+
+  function renderPage() {
+    switch (activePage) {
+      case 'customers':
+        return <CustomersPage />
+      case 'locations':
+        return <LocationsPage />
+      case 'categories':
+        return <CategoriesPage />
+      case 'capturedRecords':
+        return <CapturedRecordsPage />
+      default:
+        return <DashboardPage />
+    }
+  }
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
+    <div className="min-h-screen bg-[#F8FAFC]">
+      <aside className="fixed inset-y-0 left-0 hidden w-64 bg-[#0F172A] text-white lg:block">
+        <div className="border-b border-gray-800 p-6">
+          <h1 className="text-xl font-bold">FieldSync</h1>
+            <p className="mt-1 text-sm text-slate-400">Web Sync Console</p>
         </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
 
-      <div className="ticks"></div>
+        <nav className="space-y-1 p-4">
+          {navigation.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              onClick={() => setActivePage(item.key)}
+              className={`w-full rounded-lg px-4 py-3 text-left text-sm font-medium transition ${
+                activePage === item.key
+                  ? 'bg-[#2563EB] text-white'
+                  : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </nav>
+      </aside>
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+      <div className="min-w-0 lg:pl-64">
+        <header className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-white px-4 py-4 shadow-sm lg:px-8">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">
+                FieldSync Data Capture Platform
+              </h2>
+              <p className="text-sm text-gray-500">
+                Offline mobile data capture and cloud synchronization console
+              </p>
+            </div>
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+            <div className="flex flex-wrap gap-2 lg:hidden">
+              {navigation.map((item) => (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => setActivePage(item.key)}
+                  className={`rounded-lg px-3 py-2 text-sm font-medium ${
+                    activePage === item.key
+                      ? 'bg-[#2563EB] text-white'
+                      : 'bg-gray-100 text-gray-700'
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </header>
+
+      <main className="min-w-0 overflow-x-hidden p-4 lg:p-8">
+        {renderPage()}
+      </main>
+      </div>
+    </div>
+  )
+}
+
+function PlaceholderPage({ title }) {
+  return (
+    <div>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
+        <p className="text-gray-600">
+          This screen will be implemented next.
+        </p>
+      </div>
+
+      <div className="app-card p-6">
+        Coming soon
+      </div>
+    </div>
   )
 }
 
