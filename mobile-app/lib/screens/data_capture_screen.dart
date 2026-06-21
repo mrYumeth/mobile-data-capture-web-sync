@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:path/path.dart' as path;
+import 'package:path_provider/path_provider.dart';
 
 import '../database/local_database_service.dart';
 import '../models/master_data_item.dart';
@@ -77,6 +79,28 @@ class _DataCaptureScreenState extends State<DataCaptureScreen> {
     }
   }
 
+  Future<String> _saveImagePermanently(XFile image) async {
+    final appDirectory = await getApplicationDocumentsDirectory();
+
+    final imagesDirectory = Directory(
+      path.join(appDirectory.path, 'captured_images'),
+    );
+
+    if (!await imagesDirectory.exists()) {
+      await imagesDirectory.create(recursive: true);
+    }
+
+    final extension = path.extension(image.path);
+    final fileName =
+        'captured_${DateTime.now().millisecondsSinceEpoch}$extension';
+
+    final savedImage = await File(
+      image.path,
+    ).copy(path.join(imagesDirectory.path, fileName));
+
+    return savedImage.path;
+  }
+
   Future<void> _captureImage() async {
     setState(() {
       _isCapturingImage = true;
@@ -88,11 +112,13 @@ class _DataCaptureScreenState extends State<DataCaptureScreen> {
         imageQuality: 70,
       );
 
-      if (!mounted) return;
-
       if (image != null) {
+        final savedImagePath = await _saveImagePermanently(image);
+
+        if (!mounted) return;
+
         setState(() {
-          _imagePath = image.path;
+          _imagePath = savedImagePath;
         });
       }
     } catch (error) {
