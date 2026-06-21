@@ -115,3 +115,13 @@ export const dashboardApi = {
     }
   },
 }
+
+export const capturedRecordApi = {
+  getAll() {
+    return request('/api/captured-records');
+  },
+
+  getById(id) {
+    return request(`/api/captured-records/${id}`);
+  },
+};

@@ -3,6 +3,7 @@ import DashboardPage from './pages/DashboardPage'
 import CustomersPage from './pages/CustomersPage'
 import LocationsPage from './pages/LocationsPage';
 import CategoriesPage from './pages/CategoriesPage';
+import CapturedRecordsPage from './pages/CapturedRecordsPage';
 
 const navigation = [
   { key: 'dashboard', label: 'Dashboard' },
@@ -24,7 +25,7 @@ function App() {
       case 'categories':
         return <CategoriesPage />
       case 'capturedRecords':
-        return <PlaceholderPage title="Captured Records" />
+        return <CapturedRecordsPage />
       default:
         return <DashboardPage />
     }
