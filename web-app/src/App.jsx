@@ -4,6 +4,7 @@ import CustomersPage from './pages/CustomersPage'
 import LocationsPage from './pages/LocationsPage'
 import CategoriesPage from './pages/CategoriesPage'
 import CapturedRecordsPage from './pages/CapturedRecordsPage'
+import LoginPage from './pages/LoginPage'
 
 const navigation = [
   { key: 'dashboard', label: 'Dashboard' },
@@ -19,6 +20,10 @@ function App() {
     return localStorage.getItem('fieldsync-theme') || 'light'
   })
 
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+  return localStorage.getItem('fieldsync-admin-auth') === 'true'
+})
+
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
     localStorage.setItem('fieldsync-theme', theme)
@@ -29,6 +34,26 @@ function App() {
       currentTheme === 'dark' ? 'light' : 'dark'
     )
   }
+
+  function handleLogin() {
+  setIsAuthenticated(true)
+}
+
+function handleLogout() {
+  localStorage.removeItem('fieldsync-admin-auth')
+  setIsAuthenticated(false)
+  setActivePage('dashboard')
+}
+
+if (!isAuthenticated) {
+  return (
+    <LoginPage
+      onLogin={handleLogin}
+      theme={theme}
+      toggleTheme={toggleTheme}
+    />
+  )
+}
 
   function renderPage() {
     switch (activePage) {
@@ -90,10 +115,12 @@ function App() {
             >
               {theme === 'dark' ? '☀' : '☾'}
             </button>
-
-            <div className="hidden rounded-full border border-white/10 px-4 py-2 text-sm font-semibold xl:block">
-              Admin Console
-            </div>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="hidden rounded-full border border-white/10 px-4 py-2 text-sm font-semibold transition hover:bg-white/10 xl:block"              >
+                Logout
+              </button>
           </div>
         </div>
       </header>
