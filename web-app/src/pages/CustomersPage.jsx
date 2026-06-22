@@ -197,7 +197,7 @@ function handleChange(event) {
               <button
                 type="submit"
                 disabled={saving}
-                className="rounded-lg bg-[#2563EB] px-4 py-2 font-medium text-white hover:bg-[#1D4ED8] disabled:opacity-60"
+                className="rounded-lg bg-[#EB5979] px-4 py-2 font-medium text-white hover:bg-[#D94368] disabled:opacity-60"
               >
                 {saving
                   ? 'Saving...'

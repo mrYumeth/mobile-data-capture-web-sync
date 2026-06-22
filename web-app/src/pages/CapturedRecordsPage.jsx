@@ -128,7 +128,7 @@ function CapturedRecordsPage() {
                         <button
                           type="button"
                           onClick={() => openDetails(record.id)}
-                          className="rounded bg-[#2563EB] px-3 py-1 text-white hover:bg-[#1D4ED8]"
+                          className="rounded bg-[#EB5979] px-3 py-1 text-white hover:bg-[#D94368]"
                         >
                           View
                         </button>
