@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:path/path.dart' as path;
+import 'package:path_provider/path_provider.dart';
 
 import '../database/local_database_service.dart';
 import '../models/master_data_item.dart';
@@ -31,7 +33,7 @@ class _DataCaptureScreenState extends State<DataCaptureScreen> {
 
   double? _latitude;
   double? _longitude;
-  String? _imagePath;
+  final List<String> _imagePaths = [];
 
   bool _isLoading = true;
   bool _isSaving = false;
@@ -77,6 +79,28 @@ class _DataCaptureScreenState extends State<DataCaptureScreen> {
     }
   }
 
+  Future<String> _saveImagePermanently(XFile image) async {
+    final appDirectory = await getApplicationDocumentsDirectory();
+
+    final imagesDirectory = Directory(
+      path.join(appDirectory.path, 'captured_images'),
+    );
+
+    if (!await imagesDirectory.exists()) {
+      await imagesDirectory.create(recursive: true);
+    }
+
+    final extension = path.extension(image.path);
+    final fileName =
+        'captured_${DateTime.now().millisecondsSinceEpoch}$extension';
+
+    final savedImage = await File(
+      image.path,
+    ).copy(path.join(imagesDirectory.path, fileName));
+
+    return savedImage.path;
+  }
+
   Future<void> _captureImage() async {
     setState(() {
       _isCapturingImage = true;
@@ -88,11 +112,13 @@ class _DataCaptureScreenState extends State<DataCaptureScreen> {
         imageQuality: 70,
       );
 
-      if (!mounted) return;
-
       if (image != null) {
+        final savedImagePath = await _saveImagePermanently(image);
+
+        if (!mounted) return;
+
         setState(() {
-          _imagePath = image.path;
+          _imagePaths.add(savedImagePath);
         });
       }
     } catch (error) {
@@ -108,6 +134,12 @@ class _DataCaptureScreenState extends State<DataCaptureScreen> {
         });
       }
     }
+  }
+
+  void _removeImage(int index) {
+    setState(() {
+      _imagePaths.removeAt(index);
+    });
   }
 
   Future<void> _captureLocation() async {
@@ -175,9 +207,11 @@ class _DataCaptureScreenState extends State<DataCaptureScreen> {
       return;
     }
 
-    if (_imagePath == null) {
+    if (_imagePaths.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please capture an image before saving.')),
+        const SnackBar(
+          content: Text('Please capture at least one image before saving.'),
+        ),
       );
       return;
     }
@@ -194,7 +228,7 @@ class _DataCaptureScreenState extends State<DataCaptureScreen> {
         description: _descriptionController.text.trim(),
         latitude: _latitude!,
         longitude: _longitude!,
-        imagePath: _imagePath!,
+        imagePaths: List<String>.from(_imagePaths),
       );
 
       if (!mounted) return;
@@ -337,9 +371,10 @@ class _DataCaptureScreenState extends State<DataCaptureScreen> {
               ),
               const SizedBox(height: 16),
               _ImageCaptureCard(
-                imagePath: _imagePath,
+                imagePaths: _imagePaths,
                 isLoading: _isCapturingImage,
                 onCapture: _captureImage,
+                onRemove: _removeImage,
               ),
               const SizedBox(height: 24),
               SizedBox(
@@ -409,14 +444,16 @@ class _InfoCard extends StatelessWidget {
 }
 
 class _ImageCaptureCard extends StatelessWidget {
-  final String? imagePath;
+  final List<String> imagePaths;
   final bool isLoading;
   final VoidCallback onCapture;
+  final void Function(int index) onRemove;
 
   const _ImageCaptureCard({
-    required this.imagePath,
+    required this.imagePaths,
     required this.isLoading,
     required this.onCapture,
+    required this.onRemove,
   });
 
   @override
@@ -432,27 +469,72 @@ class _ImageCaptureCard extends StatelessWidget {
                 Icon(Icons.camera_alt_outlined),
                 SizedBox(width: 8),
                 Text(
-                  'Captured Image',
-                  style: TextStyle(fontWeight: FontWeight.w600),
+                  'Captured Images',
+                  style: TextStyle(fontWeight: FontWeight.w700),
                 ),
               ],
             ),
             const SizedBox(height: 12),
-            if (imagePath == null)
-              const Text('No image captured yet.')
+
+            if (imagePaths.isEmpty)
+              const Text('No images captured yet.')
             else
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.file(
-                  File(imagePath!),
-                  height: 180,
-                  fit: BoxFit.cover,
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: imagePaths.length,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 10,
+                  mainAxisSpacing: 10,
                 ),
+                itemBuilder: (context, index) {
+                  final imagePath = imagePaths[index];
+
+                  return Stack(
+                    children: [
+                      Positioned.fill(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(14),
+                          child: Image.file(File(imagePath), fit: BoxFit.cover),
+                        ),
+                      ),
+                      Positioned(
+                        right: 6,
+                        top: 6,
+                        child: InkWell(
+                          onTap: () => onRemove(index),
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.65),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.close,
+                              color: Colors.white,
+                              size: 16,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
+
             const SizedBox(height: 12),
-            OutlinedButton(
+
+            OutlinedButton.icon(
               onPressed: isLoading ? null : onCapture,
-              child: Text(isLoading ? 'Opening Camera...' : 'Capture Image'),
+              icon: isLoading
+                  ? const SizedBox(
+                      height: 18,
+                      width: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.add_a_photo_outlined),
+              label: Text(isLoading ? 'Capturing...' : 'Add Photo'),
             ),
           ],
         ),

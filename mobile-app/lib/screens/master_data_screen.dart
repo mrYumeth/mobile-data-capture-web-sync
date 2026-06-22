@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../database/local_database_service.dart';
 import '../models/master_data_item.dart';
+import '../services/master_data_sync_service.dart';
 
 class MasterDataScreen extends StatefulWidget {
   const MasterDataScreen({super.key});
@@ -12,6 +13,9 @@ class MasterDataScreen extends StatefulWidget {
 
 class _MasterDataScreenState extends State<MasterDataScreen> {
   final _databaseService = LocalDatabaseService.instance;
+  final _syncService = MasterDataSyncService();
+
+  bool _isSyncing = false;
 
   late Future<List<MasterDataItem>> _customersFuture;
   late Future<List<MasterDataItem>> _locationsFuture;
@@ -35,13 +39,74 @@ class _MasterDataScreenState extends State<MasterDataScreen> {
     });
   }
 
+  Future<void> _syncMasterDataFromServer() async {
+    setState(() {
+      _isSyncing = true;
+    });
+
+    try {
+      final result = await _syncService.syncMasterData();
+
+      setState(() {
+        _loadMasterData();
+      });
+
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Master data synced: ${result.customerCount} customers, '
+            '${result.locationCount} locations, '
+            '${result.categoryCount} categories.',
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Master data sync failed: $error'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSyncing = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
       length: 3,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Local Master Data'),
+          title: const Text('Master Data'),
+          actions: [
+            IconButton(
+              tooltip: 'Sync from server',
+              onPressed: _isSyncing ? null : _syncMasterDataFromServer,
+              icon: _isSyncing
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.cloud_sync),
+            ),
+          ],
           bottom: const TabBar(
             tabs: [
               Tab(text: 'Customers'),

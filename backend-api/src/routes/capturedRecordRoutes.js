@@ -36,6 +36,60 @@ function buildImageUrl(req, imageUrl) {
   return `${req.protocol}://${req.get('host')}${imageUrl}`;
 }
 
+function getUploadedImageFiles(req) {
+  const multipleImages = req.files?.images || [];
+  const legacyImage = req.files?.image || [];
+
+  return [...multipleImages, ...legacyImage];
+}
+
+async function attachImagesToRecords(req, records) {
+  if (records.length === 0) {
+    return records;
+  }
+
+  const recordIds = records.map((record) => record.id);
+
+  const imageResult = await pool.query(
+    `
+    SELECT
+      id,
+      captured_record_id,
+      image_url,
+      storage_path,
+      created_at
+    FROM captured_images
+    WHERE captured_record_id = ANY($1::int[])
+    ORDER BY id ASC
+    `,
+    [recordIds]
+  );
+
+  const imagesByRecordId = new Map();
+
+  for (const image of imageResult.rows) {
+    const currentImages = imagesByRecordId.get(image.captured_record_id) || [];
+
+    currentImages.push({
+      ...image,
+      full_image_url: buildImageUrl(req, image.image_url),
+    });
+
+    imagesByRecordId.set(image.captured_record_id, currentImages);
+  }
+
+  return records.map((record) => {
+    const images = imagesByRecordId.get(record.id) || [];
+
+    return {
+      ...record,
+      images,
+      full_image_url:
+        images[0]?.full_image_url || buildImageUrl(req, record.image_url),
+    };
+  });
+}
+
 router.get('/', async (req, res) => {
   try {
     const result = await pool.query(`
@@ -63,10 +117,7 @@ router.get('/', async (req, res) => {
       ORDER BY cr.received_at DESC
     `);
 
-    const records = result.rows.map((record) => ({
-      ...record,
-      full_image_url: buildImageUrl(req, record.image_url),
-    }));
+    const records = await attachImagesToRecords(req, result.rows);
 
     res.json(records);
   } catch (error) {
@@ -116,12 +167,9 @@ router.get('/:id', async (req, res) => {
       });
     }
 
-    const record = result.rows[0];
+    const records = await attachImagesToRecords(req, [result.rows[0]]);
 
-    res.json({
-      ...record,
-      full_image_url: buildImageUrl(req, record.image_url),
-    });
+    res.json(records[0]);
   } catch (error) {
     res.status(500).json({
       message: 'Failed to fetch captured record',
@@ -130,98 +178,113 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-router.post('/', upload.single('image'), async (req, res) => {
-  const client = await pool.connect();
+router.post(
+  '/',
+  upload.fields([
+    { name: 'images', maxCount: 10 },
+    { name: 'image', maxCount: 1 },
+  ]),
+  async (req, res) => {
+    const client = await pool.connect();
 
-  try {
-    const {
-      customer_id,
-      location_id,
-      category_id,
-      description,
-      latitude,
-      longitude,
-      captured_at,
-    } = req.body;
-
-    if (!customer_id || !location_id || !category_id) {
-      return res.status(400).json({
-        message: 'Customer, location and category are required',
-      });
-    }
-
-    const imageUrl = req.file
-      ? `/uploads/captured-images/${req.file.filename}`
-      : null;
-
-    const imagePath = req.file ? req.file.path.replace(/\\/g, '/') : null;
-
-    await client.query('BEGIN');
-
-    const recordResult = await client.query(
-      `
-      INSERT INTO captured_records (
+    try {
+      const {
         customer_id,
         location_id,
         category_id,
         description,
         latitude,
         longitude,
-        image_url,
-        image_path,
-        captured_at
-      )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-      RETURNING *
-      `,
-      [
-        customer_id,
-        location_id,
-        category_id,
-        description || '',
-        latitude || null,
-        longitude || null,
-        imageUrl,
-        imagePath,
-        captured_at || new Date().toISOString(),
-      ]
-    );
+        captured_at,
+      } = req.body;
 
-    const capturedRecord = recordResult.rows[0];
+      if (!customer_id || !location_id || !category_id) {
+        return res.status(400).json({
+          message: 'Customer, location and category are required',
+        });
+      }
 
-    if (req.file) {
-      await client.query(
+      const uploadedImages = getUploadedImageFiles(req);
+      const primaryImage =
+        uploadedImages.length > 0 ? uploadedImages[0] : null;
+
+      const imageUrl = primaryImage
+        ? `/uploads/captured-images/${primaryImage.filename}`
+        : null;
+
+      const imagePath = primaryImage
+        ? primaryImage.path.replace(/\\/g, '/')
+        : null;
+
+      await client.query('BEGIN');
+
+      const recordResult = await client.query(
         `
-        INSERT INTO captured_images (
-          captured_record_id,
+        INSERT INTO captured_records (
+          customer_id,
+          location_id,
+          category_id,
+          description,
+          latitude,
+          longitude,
           image_url,
-          storage_path
+          image_path,
+          captured_at
         )
-        VALUES ($1, $2, $3)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        RETURNING *
         `,
-        [capturedRecord.id, imageUrl, imagePath]
+        [
+          customer_id,
+          location_id,
+          category_id,
+          description || '',
+          latitude || null,
+          longitude || null,
+          imageUrl,
+          imagePath,
+          captured_at || new Date().toISOString(),
+        ]
       );
+
+      const capturedRecord = recordResult.rows[0];
+
+      for (const file of uploadedImages) {
+        const currentImageUrl = `/uploads/captured-images/${file.filename}`;
+        const currentImagePath = file.path.replace(/\\/g, '/');
+
+        await client.query(
+          `
+          INSERT INTO captured_images (
+            captured_record_id,
+            image_url,
+            storage_path
+          )
+          VALUES ($1, $2, $3)
+          `,
+          [capturedRecord.id, currentImageUrl, currentImagePath]
+        );
+      }
+
+      await client.query('COMMIT');
+
+      const records = await attachImagesToRecords(req, [capturedRecord]);
+
+      res.status(201).json({
+        message: 'Captured record created successfully',
+        record: records[0],
+      });
+    } catch (error) {
+      await client.query('ROLLBACK');
+
+      res.status(500).json({
+        message: 'Failed to create captured record',
+        error: error.message,
+      });
+    } finally {
+      client.release();
     }
-
-    await client.query('COMMIT');
-
-    res.status(201).json({
-      message: 'Captured record created successfully',
-      record: {
-        ...capturedRecord,
-        full_image_url: buildImageUrl(req, capturedRecord.image_url),
-      },
-    });
-  } catch (error) {
-    await client.query('ROLLBACK');
-
-    res.status(500).json({
-      message: 'Failed to create captured record',
-      error: error.message,
-    });
-  } finally {
-    client.release();
   }
-});
+);
 
 module.exports = router;

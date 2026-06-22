@@ -1,9 +1,10 @@
+import 'dart:convert';
+
 import 'package:path/path.dart' as path;
 import 'package:sqflite/sqflite.dart';
 
-import '../models/master_data_item.dart';
-
 import '../models/captured_record.dart';
+import '../models/master_data_item.dart';
 
 class LocalDatabaseService {
   static final LocalDatabaseService instance = LocalDatabaseService._internal();
@@ -217,7 +218,7 @@ class LocalDatabaseService {
     required String description,
     required double latitude,
     required double longitude,
-    required String imagePath,
+    required List<String> imagePaths,
   }) async {
     final db = await database;
     final now = DateTime.now().toIso8601String();
@@ -229,7 +230,7 @@ class LocalDatabaseService {
       'description': description,
       'latitude': latitude,
       'longitude': longitude,
-      'image_path': imagePath,
+      'image_path': jsonEncode(imagePaths),
       'captured_at': now,
       'sync_status': 'Pending Sync',
       'server_id': null,
@@ -242,27 +243,27 @@ class LocalDatabaseService {
     final db = await database;
 
     final result = await db.rawQuery('''
-    SELECT
-      cr.id,
-      cr.customer_id,
-      cr.location_id,
-      cr.category_id,
-      c.name AS customer_name,
-      l.name AS location_name,
-      cat.name AS category_name,
-      cr.description,
-      cr.latitude,
-      cr.longitude,
-      cr.image_path,
-      cr.captured_at,
-      cr.sync_status,
-      cr.server_id
-    FROM captured_records cr
-    INNER JOIN customers c ON c.id = cr.customer_id
-    INNER JOIN locations l ON l.id = cr.location_id
-    INNER JOIN categories cat ON cat.id = cr.category_id
-    ORDER BY cr.id DESC
-  ''');
+      SELECT
+        cr.id,
+        cr.customer_id,
+        cr.location_id,
+        cr.category_id,
+        c.name AS customer_name,
+        l.name AS location_name,
+        cat.name AS category_name,
+        cr.description,
+        cr.latitude,
+        cr.longitude,
+        cr.image_path,
+        cr.captured_at,
+        cr.sync_status,
+        cr.server_id
+      FROM captured_records cr
+      INNER JOIN customers c ON c.id = cr.customer_id
+      INNER JOIN locations l ON l.id = cr.location_id
+      INNER JOIN categories cat ON cat.id = cr.category_id
+      ORDER BY cr.id DESC
+    ''');
 
     return result.map((row) => CapturedRecord.fromMap(row)).toList();
   }
@@ -272,28 +273,28 @@ class LocalDatabaseService {
 
     final result = await db.rawQuery(
       '''
-    SELECT
-      cr.id,
-      cr.customer_id,
-      cr.location_id,
-      cr.category_id,
-      c.name AS customer_name,
-      l.name AS location_name,
-      cat.name AS category_name,
-      cr.description,
-      cr.latitude,
-      cr.longitude,
-      cr.image_path,
-      cr.captured_at,
-      cr.sync_status,
-      cr.server_id
-    FROM captured_records cr
-    INNER JOIN customers c ON c.id = cr.customer_id
-    INNER JOIN locations l ON l.id = cr.location_id
-    INNER JOIN categories cat ON cat.id = cr.category_id
-    WHERE cr.id = ?
-    LIMIT 1
-    ''',
+      SELECT
+        cr.id,
+        cr.customer_id,
+        cr.location_id,
+        cr.category_id,
+        c.name AS customer_name,
+        l.name AS location_name,
+        cat.name AS category_name,
+        cr.description,
+        cr.latitude,
+        cr.longitude,
+        cr.image_path,
+        cr.captured_at,
+        cr.sync_status,
+        cr.server_id
+      FROM captured_records cr
+      INNER JOIN customers c ON c.id = cr.customer_id
+      INNER JOIN locations l ON l.id = cr.location_id
+      INNER JOIN categories cat ON cat.id = cr.category_id
+      WHERE cr.id = ?
+      LIMIT 1
+      ''',
       [id],
     );
 
@@ -337,5 +338,116 @@ class LocalDatabaseService {
       'synced': synced,
       'failed': failed,
     };
+  }
+
+  Future<void> upsertCustomers(List<Map<String, dynamic>> customers) async {
+    final db = await database;
+    final batch = db.batch();
+
+    for (final customer in customers) {
+      batch.insert('customers', {
+        'id': customer['id'],
+        'name': customer['name'],
+        'phone': customer['phone'],
+        'email': customer['email'],
+        'address': customer['address'],
+        'created_at': customer['created_at'],
+        'updated_at': customer['updated_at'],
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+    }
+
+    await batch.commit(noResult: true);
+  }
+
+  Future<void> upsertLocations(List<Map<String, dynamic>> locations) async {
+    final db = await database;
+    final batch = db.batch();
+
+    for (final location in locations) {
+      batch.insert('locations', {
+        'id': location['id'],
+        'name': location['name'],
+        'address': location['address'],
+        'created_at': location['created_at'],
+        'updated_at': location['updated_at'],
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+    }
+
+    await batch.commit(noResult: true);
+  }
+
+  Future<void> upsertCategories(List<Map<String, dynamic>> categories) async {
+    final db = await database;
+    final batch = db.batch();
+
+    for (final category in categories) {
+      batch.insert('categories', {
+        'id': category['id'],
+        'name': category['name'],
+        'description': category['description'],
+        'created_at': category['created_at'],
+        'updated_at': category['updated_at'],
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+    }
+
+    await batch.commit(noResult: true);
+  }
+
+  Future<List<CapturedRecord>> getPendingSyncRecords() async {
+    final db = await database;
+
+    final result = await db.rawQuery('''
+      SELECT
+        cr.id,
+        cr.customer_id,
+        cr.location_id,
+        cr.category_id,
+        c.name AS customer_name,
+        l.name AS location_name,
+        cat.name AS category_name,
+        cr.description,
+        cr.latitude,
+        cr.longitude,
+        cr.image_path,
+        cr.captured_at,
+        cr.sync_status,
+        cr.server_id
+      FROM captured_records cr
+      INNER JOIN customers c ON c.id = cr.customer_id
+      INNER JOIN locations l ON l.id = cr.location_id
+      INNER JOIN categories cat ON cat.id = cr.category_id
+      WHERE cr.sync_status = 'Pending Sync'
+         OR cr.sync_status = 'Sync Failed'
+      ORDER BY cr.id ASC
+    ''');
+
+    return result.map((row) => CapturedRecord.fromMap(row)).toList();
+  }
+
+  Future<void> markCapturedRecordAsSynced({
+    required int localId,
+    required int serverId,
+  }) async {
+    final db = await database;
+    final now = DateTime.now().toIso8601String();
+
+    await db.update(
+      'captured_records',
+      {'sync_status': 'Synced', 'server_id': serverId, 'updated_at': now},
+      where: 'id = ?',
+      whereArgs: [localId],
+    );
+  }
+
+  Future<void> markCapturedRecordAsSyncFailed({required int localId}) async {
+    final db = await database;
+    final now = DateTime.now().toIso8601String();
+
+    await db.update(
+      'captured_records',
+      {'sync_status': 'Sync Failed', 'updated_at': now},
+      where: 'id = ?',
+      whereArgs: [localId],
+    );
   }
 }

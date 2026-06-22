@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../database/local_database_service.dart';
+import '../services/record_sync_service.dart';
 
 class SyncStatusScreen extends StatefulWidget {
   const SyncStatusScreen({super.key});
@@ -11,8 +12,11 @@ class SyncStatusScreen extends StatefulWidget {
 
 class _SyncStatusScreenState extends State<SyncStatusScreen> {
   final LocalDatabaseService _databaseService = LocalDatabaseService.instance;
+  final RecordSyncService _recordSyncService = RecordSyncService();
 
   late Future<Map<String, int>> _syncCountsFuture;
+
+  bool _isSyncing = false;
 
   @override
   void initState() {
@@ -30,20 +34,64 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
     });
   }
 
-  void _showPhaseMessage() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Actual web sync will be implemented in Phase 3: API Integration.',
+  Future<void> _syncPendingRecords() async {
+    setState(() {
+      _isSyncing = true;
+    });
+
+    try {
+      final result = await _recordSyncService.syncPendingRecords();
+
+      setState(() {
+        _loadSyncCounts();
+      });
+
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Sync completed. Total: ${result.totalCount}, '
+            'Synced: ${result.syncedCount}, '
+            'Failed: ${result.failedCount}.',
+          ),
         ),
-      ),
-    );
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Sync failed: $error'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSyncing = false;
+        });
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Sync Status')),
+      appBar: AppBar(
+        title: const Text('Sync Status'),
+        actions: [
+          IconButton(
+            tooltip: 'Refresh',
+            onPressed: _isSyncing ? null : _refreshCounts,
+            icon: const Icon(Icons.refresh),
+          ),
+        ],
+      ),
       body: FutureBuilder<Map<String, int>>(
         future: _syncCountsFuture,
         builder: (context, snapshot) {
@@ -107,19 +155,31 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         const Text(
-                          'Sync Note',
+                          'Upload Pending Records',
                           style: TextStyle(fontWeight: FontWeight.w700),
                         ),
                         const SizedBox(height: 8),
                         const Text(
-                          'This screen currently shows local SQLite sync status only. '
-                          'Uploading records to the web backend will be added during Phase 3.',
+                          'This will upload all pending or previously failed '
+                          'local records to the backend API. Successfully '
+                          'uploaded records will be marked as Synced.',
                         ),
                         const SizedBox(height: 16),
                         FilledButton.icon(
-                          onPressed: _showPhaseMessage,
-                          icon: const Icon(Icons.sync_outlined),
-                          label: const Text('Sync Pending Records'),
+                          onPressed: _isSyncing ? null : _syncPendingRecords,
+                          icon: _isSyncing
+                              ? const SizedBox(
+                                  height: 18,
+                                  width: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Icon(Icons.sync_outlined),
+                          label: Text(
+                            _isSyncing ? 'Syncing...' : 'Sync Pending Records',
+                          ),
                         ),
                       ],
                     ),
