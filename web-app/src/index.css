@@ -7,6 +7,10 @@
   --color-pink-dark: #d94368;
   --color-grey: #6b7280;
   --color-border: rgba(0, 0, 0, 0.08);
+  --content-shell-bg: rgba(255, 255, 255, 0.88);
+  --content-card-bg: rgba(255, 255, 255, 0.96);
+  --content-card-border: rgba(229, 229, 229, 0.95);
+  --content-table-header: #f9fafb;
 
   --page-bg:
     radial-gradient(circle at top left, rgba(235, 89, 121, 0.16), transparent 28%),
@@ -22,15 +26,21 @@
 
 html[data-theme="dark"] {
   --page-bg:
-    radial-gradient(circle at top left, rgba(235, 89, 121, 0.2), transparent 30%),
-    linear-gradient(135deg, #000000 0%, #0b0b0f 50%, #111111 100%);
+    radial-gradient(circle at top left, rgba(235, 89, 121, 0.16), transparent 26%),
+    linear-gradient(135deg, #1f2026 0%, #2a2b32 45%, #34353d 100%);
 
-  --header-bg: rgba(0, 0, 0, 0.66);
-  --header-border: rgba(255, 255, 255, 0.12);
+  --header-bg: rgba(45, 46, 54, 0.82);
+  --header-border: rgba(255, 255, 255, 0.16);
   --header-text: #ffffff;
   --header-muted: #d1d5db;
-  --nav-hover: rgba(255, 255, 255, 0.08);
-  --page-shell-bg: rgba(255, 255, 255, 0.92);
+
+  --nav-hover: rgba(255, 255, 255, 0.1);
+
+  --page-shell-bg: rgba(220, 221, 227, 0.92);
+  --content-shell-bg: rgba(220, 221, 227, 0.92);
+  --content-card-bg: rgba(241, 241, 243, 0.96);
+  --content-card-border: rgba(201, 203, 211, 0.9);
+  --content-table-header: #e6e7eb;
 }
 
 * {
@@ -51,6 +61,7 @@ body {
     sans-serif;
   background: var(--page-bg);
   color: #111111;
+  transition: background 0.25s ease;
 }
 
 button,
@@ -64,22 +75,24 @@ select {
   background: var(--header-bg);
   color: var(--header-text);
   border: 1px solid var(--header-border);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow:
+    0 18px 45px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .page-shell {
-  background: var(--page-shell-bg);
-  border: 1px solid rgba(229, 229, 229, 0.8);
+  background: var(--content-shell-bg);
+  border: 1px solid rgba(229, 229, 229, 0.55);
   border-radius: 28px;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.16);
 }
 
 .app-card {
-  background: rgba(255, 255, 255, 0.96);
+  background: var(--content-card-bg);
   color: #111111;
-  border: 1px solid rgba(229, 229, 229, 0.95);
+  border: 1px solid var(--content-card-border);
   border-radius: 18px;
   box-shadow: 0 18px 45px rgba(0, 0, 0, 0.08);
 }
@@ -168,4 +181,17 @@ select {
 .accent-glow {
   color: var(--color-pink);
   text-shadow: 0 0 18px rgba(235, 89, 121, 0.55);
+}
+
+html[data-theme="dark"] .bg-white {
+  background-color: var(--content-card-bg) !important;
+}
+
+html[data-theme="dark"] .bg-gray-50 {
+  background-color: var(--content-table-header) !important;
+}
+
+html[data-theme="dark"] .border-gray-200,
+html[data-theme="dark"] .border-gray-300 {
+  border-color: var(--content-card-border) !important;
 }
