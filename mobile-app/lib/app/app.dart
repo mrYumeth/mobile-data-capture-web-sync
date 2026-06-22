@@ -13,6 +13,8 @@ class MobileDataCaptureApp extends StatelessWidget {
       title: 'FieldSync',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: ThemeMode.system,
       home: const LoginScreen(),
     );
   }
