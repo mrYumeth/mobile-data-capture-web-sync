@@ -106,13 +106,14 @@ function CapturedRecordsPage() {
             </div>
           ) : (
             <div className="w-full overflow-x-auto">
-              <table className="w-full min-w-[760px] border-collapse text-left text-sm">
+              <table className="w-full min-w-[820px] border-collapse text-left text-sm">
                 <thead>
                   <tr className="border-b bg-gray-50">
                     <TableHeader>ID</TableHeader>
                     <TableHeader>Customer</TableHeader>
                     <TableHeader>Location</TableHeader>
                     <TableHeader>Category</TableHeader>
+                    <TableHeader>Images</TableHeader>
                     <TableHeader>Captured At</TableHeader>
                     <TableHeader>Received At</TableHeader>
                     <TableHeader>Action</TableHeader>
@@ -120,25 +121,34 @@ function CapturedRecordsPage() {
                 </thead>
 
                 <tbody>
-                  {records.map((record) => (
-                    <tr key={record.id} className="border-b hover:bg-gray-50">
-                      <TableCell>#{record.id}</TableCell>
-                      <TableCell>{record.customer_name || '-'}</TableCell>
-                      <TableCell>{record.location_name || '-'}</TableCell>
-                      <TableCell>{record.category_name || '-'}</TableCell>
-                      <TableCell>{formatDateTime(record.captured_at)}</TableCell>
-                      <TableCell>{formatDateTime(record.received_at)}</TableCell>
-                      <TableCell>
-                        <button
-                          type="button"
-                          onClick={() => openDetails(record.id)}
-                          className="rounded bg-[#EB5979] px-3 py-1 text-white hover:bg-[#D94368]"
-                        >
-                          View
-                        </button>
-                      </TableCell>
-                    </tr>
-                  ))}
+                  {records.map((record) => {
+                    const imageCount = getRecordImageUrls(record).length;
+
+                    return (
+                      <tr key={record.id} className="border-b hover:bg-gray-50">
+                        <TableCell>#{record.id}</TableCell>
+                        <TableCell>{record.customer_name || '-'}</TableCell>
+                        <TableCell>{record.location_name || '-'}</TableCell>
+                        <TableCell>{record.category_name || '-'}</TableCell>
+                        <TableCell>
+                          {imageCount > 0
+                            ? `${imageCount} image${imageCount === 1 ? '' : 's'}`
+                            : '-'}
+                        </TableCell>
+                        <TableCell>{formatDateTime(record.captured_at)}</TableCell>
+                        <TableCell>{formatDateTime(record.received_at)}</TableCell>
+                        <TableCell>
+                          <button
+                            type="button"
+                            onClick={() => openDetails(record.id)}
+                            className="rounded bg-[#EB5979] px-3 py-1 text-white hover:bg-[#D94368]"
+                          >
+                            View
+                          </button>
+                        </TableCell>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -158,7 +168,7 @@ function CapturedRecordsPage() {
                   onClick={() => setIsFullScreenOpen(true)}
                   className="rounded-lg bg-[#EB5979] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#D94368]"
                 >
-                  Full Screen
+                  View in Full Screen
                 </button>
 
                 <button
@@ -185,7 +195,7 @@ function CapturedRecordsPage() {
                 Select a record to view details.
               </p>
               <p className="mt-1 text-sm text-gray-500">
-                The selected record’s GPS, image, and captured data will appear
+                The selected record’s GPS, images, and captured data will appear
                 here.
               </p>
             </div>
@@ -204,8 +214,18 @@ function CapturedRecordsPage() {
   );
 }
 
+function getRecordImageUrls(record) {
+  if (Array.isArray(record.images) && record.images.length > 0) {
+    return record.images
+      .map((image) => image.full_image_url)
+      .filter(Boolean);
+  }
+
+  return record.full_image_url ? [record.full_image_url] : [];
+}
+
 function RecordDetails({ record, formatDateTime }) {
-  const imageUrl = record.full_image_url;
+  const imageUrls = getRecordImageUrls(record);
 
   return (
     <div className="space-y-4">
@@ -239,29 +259,17 @@ function RecordDetails({ record, formatDateTime }) {
 
       <div>
         <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-gray-500">
-          Captured Image
+          Captured Images
         </h3>
 
-        {imageUrl ? (
-          <a href={imageUrl} target="_blank" rel="noreferrer">
-            <img
-              src={imageUrl}
-              alt="Captured field record"
-              className="max-h-72 w-full rounded-xl border border-gray-200 object-cover"
-            />
-          </a>
-        ) : (
-          <div className="rounded-lg border border-dashed border-gray-300 p-6 text-center text-gray-500">
-            No image available.
-          </div>
-        )}
+        <ImageGallery imageUrls={imageUrls} />
       </div>
     </div>
   );
 }
 
 function FullScreenRecordModal({ record, formatDateTime, onClose }) {
-  const imageUrl = record.full_image_url;
+  const imageUrls = getRecordImageUrls(record);
 
   return (
     <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/70 px-4 py-6 backdrop-blur-sm">
@@ -289,7 +297,7 @@ function FullScreenRecordModal({ record, formatDateTime, onClose }) {
         </div>
 
         <div className="max-h-[calc(92vh-110px)] overflow-y-auto p-6">
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_460px]">
             <div className="space-y-5">
               <DetailSection title="Master Data">
                 <DetailRow label="Customer" value={record.customer_name} />
@@ -317,30 +325,64 @@ function FullScreenRecordModal({ record, formatDateTime, onClose }) {
 
             <div>
               <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-gray-500">
-                Captured Image
+                Captured Images
               </h3>
 
-              {imageUrl ? (
-                <a href={imageUrl} target="_blank" rel="noreferrer">
-                  <img
-                    src={imageUrl}
-                    alt="Captured field record"
-                    className="max-h-[560px] w-full rounded-2xl border border-gray-300 object-cover shadow-lg"
-                  />
-                </a>
-              ) : (
-                <div className="flex min-h-[300px] items-center justify-center rounded-2xl border border-dashed border-gray-400 bg-white/70 p-6 text-center text-gray-500">
-                  No image available.
-                </div>
-              )}
+              <ImageGallery imageUrls={imageUrls} large />
 
               <div className="mt-4 rounded-2xl bg-white/80 p-4 text-sm text-gray-600">
-                Click the image to open it in a new browser tab.
+                Click any image to open it in a new browser tab.
               </div>
             </div>
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function ImageGallery({ imageUrls, large = false }) {
+  if (imageUrls.length === 0) {
+    return (
+      <div className="rounded-lg border border-dashed border-gray-300 p-6 text-center text-gray-500">
+        No images available.
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={
+        large
+          ? 'grid grid-cols-2 gap-3'
+          : 'grid grid-cols-1 gap-3 sm:grid-cols-2'
+      }
+    >
+      {imageUrls.map((imageUrl, index) => (
+        <a
+          key={`${imageUrl}-${index}`}
+          href={imageUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="group block"
+        >
+          <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+            <img
+              src={imageUrl}
+              alt={`Captured field record ${index + 1}`}
+              className={`w-full object-cover transition group-hover:scale-105 ${
+                large ? 'h-44' : 'h-40'
+              }`}
+            />
+
+            {large && (
+              <div className="px-3 py-2 text-xs font-semibold text-gray-600">
+                Image {index + 1}
+              </div>
+            )}
+          </div>
+        </a>
+      ))}
     </div>
   );
 }
