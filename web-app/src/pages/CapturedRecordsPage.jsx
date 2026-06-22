@@ -4,6 +4,7 @@ import { capturedRecordApi } from '../services/api';
 function CapturedRecordsPage() {
   const [records, setRecords] = useState([]);
   const [selectedRecord, setSelectedRecord] = useState(null);
+  const [isFullScreenOpen, setIsFullScreenOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -29,6 +30,8 @@ function CapturedRecordsPage() {
     try {
       setDetailsLoading(true);
       setError('');
+      setIsFullScreenOpen(false);
+
       const data = await capturedRecordApi.getById(recordId);
       setSelectedRecord(data);
     } catch (err) {
@@ -40,6 +43,7 @@ function CapturedRecordsPage() {
 
   function closeDetails() {
     setSelectedRecord(null);
+    setIsFullScreenOpen(false);
   }
 
   function formatDateTime(value) {
@@ -142,19 +146,29 @@ function CapturedRecordsPage() {
         </div>
 
         <div className="app-card min-w-0 p-6">
-          <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h2 className="text-lg font-semibold text-gray-900">
               Record Details
             </h2>
 
             {selectedRecord && (
-              <button
-                type="button"
-                onClick={closeDetails}
-                className="text-sm font-medium text-gray-500 hover:text-gray-700"
-              >
-                Clear
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsFullScreenOpen(true)}
+                  className="rounded-lg bg-[#EB5979] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#D94368]"
+                >
+                  Full Screen
+                </button>
+
+                <button
+                  type="button"
+                  onClick={closeDetails}
+                  className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold text-gray-600 transition hover:bg-gray-100"
+                >
+                  Clear
+                </button>
+              </div>
             )}
           </div>
 
@@ -178,6 +192,14 @@ function CapturedRecordsPage() {
           )}
         </div>
       </div>
+
+      {isFullScreenOpen && selectedRecord && (
+        <FullScreenRecordModal
+          record={selectedRecord}
+          formatDateTime={formatDateTime}
+          onClose={() => setIsFullScreenOpen(false)}
+        />
+      )}
     </div>
   );
 }
@@ -233,6 +255,91 @@ function RecordDetails({ record, formatDateTime }) {
             No image available.
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+function FullScreenRecordModal({ record, formatDateTime, onClose }) {
+  const imageUrl = record.full_image_url;
+
+  return (
+    <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/70 px-4 py-6 backdrop-blur-sm">
+      <div className="max-h-[92vh] w-full max-w-6xl overflow-hidden rounded-[28px] bg-[#F1F1F3] shadow-[0_30px_100px_rgba(0,0,0,0.45)]">
+        <div className="flex flex-col gap-4 border-b border-gray-300 px-6 py-5 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-sm font-bold uppercase tracking-[0.25em] text-[#EB5979]">
+              Captured Record
+            </p>
+            <h2 className="mt-1 text-2xl font-extrabold text-gray-950">
+              Record #{record.id}
+            </h2>
+            <p className="text-sm text-gray-600">
+              Full screen view of uploaded field record details.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full bg-[#EB5979] px-5 py-2 font-semibold text-white transition hover:bg-[#D94368]"
+          >
+            Close
+          </button>
+        </div>
+
+        <div className="max-h-[calc(92vh-110px)] overflow-y-auto p-6">
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
+            <div className="space-y-5">
+              <DetailSection title="Master Data">
+                <DetailRow label="Customer" value={record.customer_name} />
+                <DetailRow label="Location" value={record.location_name} />
+                <DetailRow label="Category" value={record.category_name} />
+              </DetailSection>
+
+              <DetailSection title="Captured Information">
+                <DetailRow
+                  label="Captured At"
+                  value={formatDateTime(record.captured_at)}
+                />
+                <DetailRow
+                  label="Received At"
+                  value={formatDateTime(record.received_at)}
+                />
+                <DetailRow label="Description" value={record.description} />
+              </DetailSection>
+
+              <DetailSection title="GPS Coordinates">
+                <DetailRow label="Latitude" value={record.latitude} />
+                <DetailRow label="Longitude" value={record.longitude} />
+              </DetailSection>
+            </div>
+
+            <div>
+              <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-gray-500">
+                Captured Image
+              </h3>
+
+              {imageUrl ? (
+                <a href={imageUrl} target="_blank" rel="noreferrer">
+                  <img
+                    src={imageUrl}
+                    alt="Captured field record"
+                    className="max-h-[560px] w-full rounded-2xl border border-gray-300 object-cover shadow-lg"
+                  />
+                </a>
+              ) : (
+                <div className="flex min-h-[300px] items-center justify-center rounded-2xl border border-dashed border-gray-400 bg-white/70 p-6 text-center text-gray-500">
+                  No image available.
+                </div>
+              )}
+
+              <div className="mt-4 rounded-2xl bg-white/80 p-4 text-sm text-gray-600">
+                Click the image to open it in a new browser tab.
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
