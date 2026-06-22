@@ -61,12 +61,19 @@ class RecordSyncService {
       request.fields['longitude'] = record.longitude.toString();
     }
 
-    if (record.imagePath != null && record.imagePath!.isNotEmpty) {
-      final imageFile = File(record.imagePath!);
+    final imagePaths = record.imagePaths.isNotEmpty
+        ? record.imagePaths
+        : [
+            if (record.imagePath != null && record.imagePath!.isNotEmpty)
+              record.imagePath!,
+          ];
+
+    for (final imagePath in imagePaths) {
+      final imageFile = File(imagePath);
 
       if (await imageFile.exists()) {
         request.files.add(
-          await http.MultipartFile.fromPath('image', imageFile.path),
+          await http.MultipartFile.fromPath('images', imageFile.path),
         );
       }
     }
