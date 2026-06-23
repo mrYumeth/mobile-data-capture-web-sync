@@ -1,12 +1,26 @@
 const express = require('express');
 const multer = require('multer');
+const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
 const pool = require('../config/db');
-const { supabase, storageBucket } = require('../config/supabase');
+const {
+  getSupabaseClient,
+  isSupabaseStorageConfigured,
+  storageBucket,
+} = require('../config/supabase');
 
 const router = express.Router();
+
+const localUploadFolder = path.join(
+  __dirname,
+  '../../uploads/captured-images'
+);
+
+if (!fs.existsSync(localUploadFolder)) {
+  fs.mkdirSync(localUploadFolder, { recursive: true });
+}
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -34,30 +48,42 @@ function getUploadedImageFiles(req) {
   return [...multipleImages, ...legacyImage];
 }
 
-async function uploadFileToSupabaseStorage(file) {
+async function uploadImageFile(file) {
   const extension = path.extname(file.originalname) || '.jpg';
-
   const fileName = `${Date.now()}-${crypto.randomUUID()}${extension}`;
-  const storagePath = `captured-records/${fileName}`;
 
-  const { error } = await supabase.storage
-    .from(storageBucket)
-    .upload(storagePath, file.buffer, {
-      contentType: file.mimetype,
-      upsert: false,
-    });
+  if (isSupabaseStorageConfigured()) {
+    const supabase = getSupabaseClient();
+    const storagePath = `captured-records/${fileName}`;
 
-  if (error) {
-    throw new Error(`Supabase image upload failed: ${error.message}`);
+    const { error } = await supabase.storage
+      .from(storageBucket)
+      .upload(storagePath, file.buffer, {
+        contentType: file.mimetype,
+        upsert: false,
+      });
+
+    if (error) {
+      throw new Error(`Supabase image upload failed: ${error.message}`);
+    }
+
+    const { data } = supabase.storage
+      .from(storageBucket)
+      .getPublicUrl(storagePath);
+
+    return {
+      imageUrl: data.publicUrl,
+      storagePath,
+    };
   }
 
-  const { data } = supabase.storage
-    .from(storageBucket)
-    .getPublicUrl(storagePath);
+  const localFilePath = path.join(localUploadFolder, fileName);
+
+  await fs.promises.writeFile(localFilePath, file.buffer);
 
   return {
-    imageUrl: data.publicUrl,
-    storagePath,
+    imageUrl: `/uploads/captured-images/${fileName}`,
+    storagePath: localFilePath.replace(/\\/g, '/'),
   };
 }
 
@@ -227,7 +253,7 @@ router.post(
       const uploadedImages = [];
 
       for (const file of uploadedFiles) {
-        const uploadedImage = await uploadFileToSupabaseStorage(file);
+        const uploadedImage = await uploadImageFile(file);
         uploadedImages.push(uploadedImage);
       }
 
