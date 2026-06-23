@@ -5,10 +5,12 @@ import 'package:http/http.dart' as http;
 import 'api_config.dart';
 
 class ApiService {
+  static const Duration requestTimeout = Duration(seconds: 90);
+
   Future<List<Map<String, dynamic>>> getList(String endpoint) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
 
-    final response = await http.get(uri).timeout(const Duration(seconds: 15));
+    final response = await http.get(uri).timeout(requestTimeout);
 
     if (response.statusCode != 200) {
       throw Exception(

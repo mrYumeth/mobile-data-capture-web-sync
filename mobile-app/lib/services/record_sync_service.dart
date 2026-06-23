@@ -82,7 +82,7 @@ class RecordSyncService {
     }
 
     final streamedResponse = await request.send().timeout(
-      const Duration(seconds: 30),
+      const Duration(seconds: 120),
     );
 
     final responseBody = await streamedResponse.stream.bytesToString();
