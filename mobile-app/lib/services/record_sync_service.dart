@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import '../database/local_database_service.dart';
 import '../models/captured_record.dart';
 import 'api_config.dart';
+import 'package:flutter/foundation.dart';
 
 class RecordSyncService {
   final LocalDatabaseService _databaseService = LocalDatabaseService.instance;
@@ -26,7 +27,9 @@ class RecordSyncService {
         );
 
         syncedCount++;
-      } catch (_) {
+      } catch (error) {
+        debugPrint('Sync failed for local record ${record.id}: $error');
+
         await _databaseService.markCapturedRecordAsSyncFailed(
           localId: record.id,
         );

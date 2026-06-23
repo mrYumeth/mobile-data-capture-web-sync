@@ -2,35 +2,40 @@ const express = require('express');
 const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 const pool = require('../config/db');
+const {
+  getSupabaseClient,
+  isSupabaseStorageConfigured,
+  storageBucket,
+} = require('../config/supabase');
 
 const router = express.Router();
 
-const uploadFolder = path.join(__dirname, '../../uploads/captured-images');
+const localUploadFolder = path.join(
+  __dirname,
+  '../../uploads/captured-images'
+);
 
-if (!fs.existsSync(uploadFolder)) {
-  fs.mkdirSync(uploadFolder, { recursive: true });
+if (!fs.existsSync(localUploadFolder)) {
+  fs.mkdirSync(localUploadFolder, { recursive: true });
 }
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadFolder);
-  },
-  filename: (req, file, cb) => {
-    const uniqueName = `${Date.now()}-${Math.round(
-      Math.random() * 1e9
-    )}${path.extname(file.originalname)}`;
-
-    cb(null, uniqueName);
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024,
   },
 });
-
-const upload = multer({ storage });
 
 function buildImageUrl(req, imageUrl) {
   if (!imageUrl) {
     return null;
+  }
+
+  if (/^https?:\/\//i.test(imageUrl)) {
+    return imageUrl;
   }
 
   return `${req.protocol}://${req.get('host')}${imageUrl}`;
@@ -41,6 +46,45 @@ function getUploadedImageFiles(req) {
   const legacyImage = req.files?.image || [];
 
   return [...multipleImages, ...legacyImage];
+}
+
+async function uploadImageFile(file) {
+  const extension = path.extname(file.originalname) || '.jpg';
+  const fileName = `${Date.now()}-${crypto.randomUUID()}${extension}`;
+
+  if (isSupabaseStorageConfigured()) {
+    const supabase = getSupabaseClient();
+    const storagePath = `captured-records/${fileName}`;
+
+    const { error } = await supabase.storage
+      .from(storageBucket)
+      .upload(storagePath, file.buffer, {
+        contentType: file.mimetype,
+        upsert: false,
+      });
+
+    if (error) {
+      throw new Error(`Supabase image upload failed: ${error.message}`);
+    }
+
+    const { data } = supabase.storage
+      .from(storageBucket)
+      .getPublicUrl(storagePath);
+
+    return {
+      imageUrl: data.publicUrl,
+      storagePath,
+    };
+  }
+
+  const localFilePath = path.join(localUploadFolder, fileName);
+
+  await fs.promises.writeFile(localFilePath, file.buffer);
+
+  return {
+    imageUrl: `/uploads/captured-images/${fileName}`,
+    storagePath: localFilePath.replace(/\\/g, '/'),
+  };
 }
 
 async function attachImagesToRecords(req, records) {
@@ -204,17 +248,20 @@ router.post(
         });
       }
 
-      const uploadedImages = getUploadedImageFiles(req);
+      const uploadedFiles = getUploadedImageFiles(req);
+
+      const uploadedImages = [];
+
+      for (const file of uploadedFiles) {
+        const uploadedImage = await uploadImageFile(file);
+        uploadedImages.push(uploadedImage);
+      }
+
       const primaryImage =
         uploadedImages.length > 0 ? uploadedImages[0] : null;
 
-      const imageUrl = primaryImage
-        ? `/uploads/captured-images/${primaryImage.filename}`
-        : null;
-
-      const imagePath = primaryImage
-        ? primaryImage.path.replace(/\\/g, '/')
-        : null;
+      const imageUrl = primaryImage ? primaryImage.imageUrl : null;
+      const imagePath = primaryImage ? primaryImage.storagePath : null;
 
       await client.query('BEGIN');
 
@@ -249,10 +296,7 @@ router.post(
 
       const capturedRecord = recordResult.rows[0];
 
-      for (const file of uploadedImages) {
-        const currentImageUrl = `/uploads/captured-images/${file.filename}`;
-        const currentImagePath = file.path.replace(/\\/g, '/');
-
+      for (const image of uploadedImages) {
         await client.query(
           `
           INSERT INTO captured_images (
@@ -262,7 +306,7 @@ router.post(
           )
           VALUES ($1, $2, $3)
           `,
-          [capturedRecord.id, currentImageUrl, currentImagePath]
+          [capturedRecord.id, image.imageUrl, image.storagePath]
         );
       }
 
