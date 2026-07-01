@@ -15,6 +15,7 @@ const customerRoutes = require('./src/routes/customerRoutes');
 const locationRoutes = require('./src/routes/locationRoutes');
 const categoryRoutes = require('./src/routes/categoryRoutes');
 const capturedRecordRoutes = require('./src/routes/capturedRecordRoutes');
+const dnsPromises = dns.promises;
 
 const app = express();
 
@@ -128,6 +129,36 @@ function requireAdmin(req, res, next) {
   next();
 }
 
+async function createSmtpTransporter() {
+  const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com';
+  const smtpPort = Number(process.env.SMTP_PORT || 587);
+  const smtpSecure = process.env.SMTP_SECURE === 'true';
+
+  const { address } = await dnsPromises.lookup(smtpHost, {
+    family: 4,
+  });
+
+  console.log(`SMTP IPv4 resolved: ${smtpHost} -> ${address}`);
+
+  return nodemailer.createTransport({
+    host: address,
+    port: smtpPort,
+    secure: smtpSecure,
+    name: smtpHost,
+    requireTLS: !smtpSecure,
+    connectionTimeout: 30000,
+    greetingTimeout: 30000,
+    socketTimeout: 30000,
+    tls: {
+      servername: smtpHost,
+    },
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
+    },
+  });
+}
+
 async function sendUserInvitationEmail({
   user,
   setupLink,
@@ -137,18 +168,8 @@ async function sendUserInvitationEmail({
     return false;
   }
 
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: Number(process.env.SMTP_PORT || 587),
-  secure: process.env.SMTP_SECURE === 'true',
-  family: 4,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
-
-  const accessList = [];
+const transporter = await createSmtpTransporter();
+const accessList = [];
 
   if (user.access_web) {
     accessList.push(`Web App Access: ${getFrontendUrl()}`);
