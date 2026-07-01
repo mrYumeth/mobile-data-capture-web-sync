@@ -51,19 +51,57 @@ export const authApi = {
     })
   },
 
-  register(userData) {
-  return request('/api/auth/register', {
-    method: 'POST',
-    body: JSON.stringify({
-      ...userData,
-      clientType: 'web',
-    }),
-  })
-},
+  setupPassword(data) {
+    return request('/api/auth/setup-password', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  },
+
+  changePassword(data) {
+    return request('/api/auth/change-password', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  },
 
   me() {
     return request('/api/auth/me')
   },
+}
+
+export const userApi = {
+  getAll() {
+    return request('/api/admin/users')
+  },
+
+  create(user) {
+    return request('/api/admin/users', {
+      method: 'POST',
+      body: JSON.stringify(user),
+    })
+  },
+
+  update(id, user) {
+    return request(`/api/admin/users/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(user),
+    })
+  },
+
+  updateAccess(id, accessData) {
+    return request(`/api/admin/users/${id}/access`, {
+      method: 'PATCH',
+      body: JSON.stringify(accessData),
+    })
+  },
+
+    remove(id) {
+    return request(`/api/admin/users/${id}`, {
+      method: 'DELETE',
+    })
+  },
+  
 }
 
 export const customerApi = {

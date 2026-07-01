@@ -5,7 +5,8 @@ import LocationsPage from './pages/LocationsPage'
 import CategoriesPage from './pages/CategoriesPage'
 import CapturedRecordsPage from './pages/CapturedRecordsPage'
 import LoginPage from './pages/LoginPage'
-import RegisterPage from './pages/RegisterPage'
+import UserManagementPage from './pages/UserManagementPage'
+import SetupPasswordPage from './pages/SetupPasswordPage'
 
 const AUTH_TOKEN_KEY = 'fieldsync-auth-token'
 const AUTH_STATE_KEY = 'fieldsync-admin-auth'
@@ -17,6 +18,7 @@ const navigation = [
   { key: 'locations', label: 'Locations' },
   { key: 'categories', label: 'Categories' },
   { key: 'capturedRecords', label: 'Captured Records' },
+  { key: 'users', label: 'Users', adminOnly: true },
 ]
 
 function getStoredUser() {
@@ -37,6 +39,8 @@ function getStoredUser() {
 function App() {
   const [activePage, setActivePage] = useState('dashboard')
 
+  const setupToken = new URLSearchParams(window.location.search).get('setupToken')
+
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem('fieldsync-theme') || 'light'
   })
@@ -48,8 +52,6 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
     return Boolean(localStorage.getItem(AUTH_TOKEN_KEY))
   })
-
-  const [authView, setAuthView] = useState('login')
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
@@ -82,27 +84,29 @@ function App() {
     setActivePage('dashboard')
   }
 
-    if (!isAuthenticated) {
-      if (authView === 'register') {
-        return (
-          <RegisterPage
-            onRegister={handleLogin}
-            onBackToLogin={() => setAuthView('login')}
-            theme={theme}
-            toggleTheme={toggleTheme}
-          />
-        )
-      }
+  if (setupToken) {
+  return (
+    <SetupPasswordPage
+      setupToken={setupToken}
+      onBackToLogin={() => {
+        window.history.replaceState({}, document.title, window.location.pathname)
+        setIsAuthenticated(false)
+      }}
+      theme={theme}
+      toggleTheme={toggleTheme}
+    />
+  )
+}
 
-      return (
-        <LoginPage
-          onLogin={handleLogin}
-          onShowRegister={() => setAuthView('register')}
-          theme={theme}
-          toggleTheme={toggleTheme}
-        />
-      )
-    }
+if (!isAuthenticated) {
+  return (
+    <LoginPage
+      onLogin={handleLogin}
+      theme={theme}
+      toggleTheme={toggleTheme}
+    />
+  )
+}
 
   function renderPage() {
     switch (activePage) {
@@ -114,6 +118,12 @@ function App() {
         return <CategoriesPage />
       case 'capturedRecords':
         return <CapturedRecordsPage />
+          case 'users':
+      return currentUser?.role === 'admin' ? (
+        <UserManagementPage />
+      ) : (
+        <DashboardPage />
+      )
       default:
         return <DashboardPage />
     }
@@ -141,18 +151,20 @@ function App() {
           </div>
 
           <nav className="flex flex-wrap items-center gap-2">
-            {navigation.map((item) => (
-              <button
-                key={item.key}
-                type="button"
-                onClick={() => setActivePage(item.key)}
-                className={`nav-link ${
-                  activePage === item.key ? 'nav-link-active' : ''
-                }`}
-              >
-                {item.label}
-              </button>
-            ))}
+            {navigation
+              .filter((item) => !item.adminOnly || currentUser?.role === 'admin')
+              .map((item) => (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => setActivePage(item.key)}
+                  className={`nav-link ${
+                    activePage === item.key ? 'nav-link-active' : ''
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
           </nav>
 
           <div className="flex items-center gap-3">

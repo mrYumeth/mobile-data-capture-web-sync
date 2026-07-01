@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { authApi } from '../services/api'
 
-function LoginPage({ onLogin, onShowRegister, theme, toggleTheme }) {
+function LoginPage({ onLogin, theme, toggleTheme }) {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -137,20 +137,13 @@ async function handleSubmit(event) {
             <button type="submit" className="primary-button w-full">
               Login to Dashboard
             </button>
-            <button
-              type="button"
-              onClick={onShowRegister}
-              className="w-full text-sm font-semibold text-[#EB5979]"
-            >
-              Create a normal user account
-            </button>
           </form>
 
           <div className="mt-6 rounded-2xl bg-white p-4 text-sm text-gray-600">
-            <p className="font-semibold text-gray-800">Demo access only</p>
+            <p className="font-semibold text-gray-800">Secure access only</p>
             <p className="mt-1">
-              This login is hardcoded for prototype testing and does not use
-              backend authentication.
+              User accounts are created by the administrator. Please use the username
+              provided by your admin.
             </p>
           </div>
         </div>
