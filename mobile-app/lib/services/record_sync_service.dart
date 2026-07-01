@@ -7,6 +7,7 @@ import '../database/local_database_service.dart';
 import '../models/captured_record.dart';
 import 'api_config.dart';
 import 'package:flutter/foundation.dart';
+import 'auth_service.dart';
 
 class RecordSyncService {
   final LocalDatabaseService _databaseService = LocalDatabaseService.instance;
@@ -50,6 +51,12 @@ class RecordSyncService {
 
     final request = http.MultipartRequest('POST', uri);
 
+    final token = await AuthService.getStoredToken();
+
+    if (token != null) {
+      request.headers['Authorization'] = 'Bearer $token';
+    }
+
     request.fields['customer_id'] = record.customerId.toString();
     request.fields['location_id'] = record.locationId.toString();
     request.fields['category_id'] = record.categoryId.toString();
@@ -86,6 +93,11 @@ class RecordSyncService {
     );
 
     final responseBody = await streamedResponse.stream.bytesToString();
+
+    if (streamedResponse.statusCode == 401) {
+      await AuthService.clearStoredToken();
+      throw Exception('Session expired. Please login again.');
+    }
 
     if (streamedResponse.statusCode < 200 ||
         streamedResponse.statusCode >= 300) {

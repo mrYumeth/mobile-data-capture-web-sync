@@ -3,6 +3,17 @@ const pool = require('../config/db');
 
 const router = express.Router();
 
+function requireAdmin(req, res) {
+  if (req.user?.role !== 'admin') {
+    res.status(403).json({
+      message: 'Admin access is required',
+    });
+    return false;
+  }
+
+  return true;
+}
+
 router.get('/', async (req, res) => {
   try {
     const result = await pool.query(
@@ -19,6 +30,10 @@ router.get('/', async (req, res) => {
 });
 
 router.post('/', async (req, res) => {
+  if (!requireAdmin(req, res)) {
+    return;
+  }
+
   try {
     const { name, description } = req.body;
 
@@ -45,6 +60,10 @@ router.post('/', async (req, res) => {
 });
 
 router.put('/:id', async (req, res) => {
+  if (!requireAdmin(req, res)) {
+    return;
+  }
+
   try {
     const { id } = req.params;
     const { name, description } = req.body;
@@ -75,6 +94,10 @@ router.put('/:id', async (req, res) => {
 });
 
 router.delete('/:id', async (req, res) => {
+  if (!requireAdmin(req, res)) {
+    return;
+  }
+
   try {
     const { id } = req.params;
 

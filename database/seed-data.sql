@@ -1,3 +1,20 @@
+INSERT INTO users (username, password_hash, full_name, role, is_active)
+VALUES
+(
+    'admin',
+    'fieldsync-admin-salt:e848f884017adf21d798f2068333dc40ea45cf67f91b1e3588fe700a8456c9c0',
+    'FieldSync Admin',
+    'admin',
+    TRUE
+),
+(
+    'mobile',
+    'fieldsync-mobile-salt:0c1adebcdc540b42d63d4a50716ef8d385f9b04c9860e14c6930bca52b1210ba',
+    'Mobile Field User',
+    'mobile_user',
+    TRUE
+);
+
 INSERT INTO customers (name, phone, email, address)
 VALUES
 ('ABC Traders', '0771234567', 'abc@example.com', 'Colombo'),

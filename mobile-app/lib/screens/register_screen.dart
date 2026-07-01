@@ -3,20 +3,23 @@ import 'package:flutter/material.dart';
 import '../app/app_theme.dart';
 import '../services/auth_service.dart';
 import 'home_screen.dart';
-import 'register_screen.dart';
+import 'login_screen.dart';
 
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+class RegisterScreen extends StatefulWidget {
+  const RegisterScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  State<RegisterScreen> createState() => _RegisterScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _RegisterScreenState extends State<RegisterScreen> {
+  final _fullNameController = TextEditingController();
   final _usernameController = TextEditingController();
+  final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _formKey = GlobalKey<FormState>();
+  final _confirmPasswordController = TextEditingController();
 
+  final _formKey = GlobalKey<FormState>();
   final _authService = AuthService();
 
   bool _isLoading = false;
@@ -24,13 +27,23 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   void dispose() {
+    _fullNameController.dispose();
     _usernameController.dispose();
+    _emailController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
-  Future<void> _login() async {
+  Future<void> _register() async {
     if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    if (_passwordController.text != _confirmPasswordController.text) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Passwords do not match.')));
       return;
     }
 
@@ -38,8 +51,12 @@ class _LoginScreenState extends State<LoginScreen> {
       _isLoading = true;
     });
 
-    final isSuccess = await _authService.login(
+    final isSuccess = await _authService.register(
+      fullName: _fullNameController.text,
       username: _usernameController.text,
+      email: _emailController.text.trim().isEmpty
+          ? null
+          : _emailController.text,
       password: _passwordController.text,
     );
 
@@ -55,7 +72,9 @@ class _LoginScreenState extends State<LoginScreen> {
       ).pushReplacement(MaterialPageRoute(builder: (_) => const HomeScreen()));
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Invalid username or password.')),
+        const SnackBar(
+          content: Text('Registration failed. Try another username or email.'),
+        ),
       );
     }
   }
@@ -103,51 +122,14 @@ class _LoginScreenState extends State<LoginScreen> {
                             ? Colors.white.withValues(alpha: 0.12)
                             : Colors.black.withValues(alpha: 0.06),
                       ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.16),
-                          blurRadius: 40,
-                          offset: const Offset(0, 22),
-                        ),
-                      ],
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Center(
-                          child: Container(
-                            height: 96,
-                            width: 96,
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppTheme.pink.withValues(alpha: 0.25),
-                                  blurRadius: 30,
-                                  offset: const Offset(0, 12),
-                                ),
-                              ],
-                            ),
-                            child: Image.asset(
-                              'assets/images/logo.png',
-                              fit: BoxFit.contain,
-                              errorBuilder: (_, __, ___) {
-                                return const Icon(
-                                  Icons.assignment_turned_in_outlined,
-                                  color: AppTheme.pink,
-                                  size: 48,
-                                );
-                              },
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 24),
                         Text(
-                          'FieldSync',
+                          'Create FieldSync Account',
                           textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.headlineMedium
+                          style: Theme.of(context).textTheme.headlineSmall
                               ?.copyWith(
                                 fontWeight: FontWeight.w900,
                                 color: isDarkMode
@@ -157,23 +139,37 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Mobile Data Capture',
+                          'Register as a normal user',
                           textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(
-                                color: isDarkMode
-                                    ? Colors.white.withValues(alpha: 0.72)
-                                    : AppTheme.mutedText,
-                              ),
+                          style: TextStyle(
+                            color: isDarkMode
+                                ? Colors.white.withValues(alpha: 0.72)
+                                : AppTheme.mutedText,
+                          ),
                         ),
-                        const SizedBox(height: 28),
+                        const SizedBox(height: 24),
+
+                        TextFormField(
+                          controller: _fullNameController,
+                          decoration: const InputDecoration(
+                            labelText: 'Full Name',
+                            prefixIcon: Icon(Icons.badge_outlined),
+                          ),
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Full name is required';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 16),
+
                         TextFormField(
                           controller: _usernameController,
                           decoration: const InputDecoration(
                             labelText: 'Username',
                             prefixIcon: Icon(Icons.person_outline),
                           ),
-                          textInputAction: TextInputAction.next,
                           validator: (value) {
                             if (value == null || value.trim().isEmpty) {
                               return 'Username is required';
@@ -182,6 +178,17 @@ class _LoginScreenState extends State<LoginScreen> {
                           },
                         ),
                         const SizedBox(height: 16),
+
+                        TextFormField(
+                          controller: _emailController,
+                          decoration: const InputDecoration(
+                            labelText: 'Email Optional',
+                            prefixIcon: Icon(Icons.email_outlined),
+                          ),
+                          keyboardType: TextInputType.emailAddress,
+                        ),
+                        const SizedBox(height: 16),
+
                         TextFormField(
                           controller: _passwordController,
                           obscureText: _obscurePassword,
@@ -201,17 +208,33 @@ class _LoginScreenState extends State<LoginScreen> {
                               },
                             ),
                           ),
-                          onFieldSubmitted: (_) => _login(),
+                          validator: (value) {
+                            if (value == null || value.length < 6) {
+                              return 'Password must contain at least 6 characters';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 16),
+
+                        TextFormField(
+                          controller: _confirmPasswordController,
+                          obscureText: _obscurePassword,
+                          decoration: const InputDecoration(
+                            labelText: 'Confirm Password',
+                            prefixIcon: Icon(Icons.lock_reset_outlined),
+                          ),
                           validator: (value) {
                             if (value == null || value.isEmpty) {
-                              return 'Password is required';
+                              return 'Confirm password is required';
                             }
                             return null;
                           },
                         ),
                         const SizedBox(height: 24),
+
                         FilledButton(
-                          onPressed: _isLoading ? null : _login,
+                          onPressed: _isLoading ? null : _register,
                           child: _isLoading
                               ? const SizedBox(
                                   height: 20,
@@ -221,49 +244,19 @@ class _LoginScreenState extends State<LoginScreen> {
                                     color: Colors.white,
                                   ),
                                 )
-                              : const Text('Login to App'),
+                              : const Text('Create Account'),
                         ),
                         const SizedBox(height: 12),
+
                         TextButton(
                           onPressed: () {
                             Navigator.of(context).pushReplacement(
                               MaterialPageRoute(
-                                builder: (_) => const RegisterScreen(),
+                                builder: (_) => const LoginScreen(),
                               ),
                             );
                           },
-                          child: const Text('Create a normal user account'),
-                        ),
-                        const SizedBox(height: 12),
-                        TextButton(
-                          onPressed: () {
-                            Navigator.of(context).pushReplacement(
-                              MaterialPageRoute(
-                                builder: (_) => const RegisterScreen(),
-                              ),
-                            );
-                          },
-                          child: const Text('Create a normal user account'),
-                        ),
-                        const SizedBox(height: 18),
-                        Container(
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: isDarkMode
-                                ? Colors.white.withValues(alpha: 0.08)
-                                : AppTheme.lightSurface,
-                            borderRadius: BorderRadius.circular(18),
-                          ),
-                          child: Text(
-                            'Demo login: admin / admin123',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: isDarkMode
-                                  ? Colors.white.withValues(alpha: 0.72)
-                                  : AppTheme.mutedText,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
+                          child: const Text('Already have an account? Login'),
                         ),
                       ],
                     ),

@@ -5,6 +5,11 @@ import LocationsPage from './pages/LocationsPage'
 import CategoriesPage from './pages/CategoriesPage'
 import CapturedRecordsPage from './pages/CapturedRecordsPage'
 import LoginPage from './pages/LoginPage'
+import RegisterPage from './pages/RegisterPage'
+
+const AUTH_TOKEN_KEY = 'fieldsync-auth-token'
+const AUTH_STATE_KEY = 'fieldsync-admin-auth'
+const AUTH_USER_KEY = 'fieldsync-auth-user'
 
 const navigation = [
   { key: 'dashboard', label: 'Dashboard' },
@@ -14,15 +19,37 @@ const navigation = [
   { key: 'capturedRecords', label: 'Captured Records' },
 ]
 
+function getStoredUser() {
+  const storedUser = localStorage.getItem(AUTH_USER_KEY)
+
+  if (!storedUser) {
+    return null
+  }
+
+  try {
+    return JSON.parse(storedUser)
+  } catch {
+    localStorage.removeItem(AUTH_USER_KEY)
+    return null
+  }
+}
+
 function App() {
   const [activePage, setActivePage] = useState('dashboard')
+
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem('fieldsync-theme') || 'light'
   })
 
+  const [currentUser, setCurrentUser] = useState(() => {
+    return getStoredUser()
+  })
+
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
-  return localStorage.getItem('fieldsync-admin-auth') === 'true'
-})
+    return Boolean(localStorage.getItem(AUTH_TOKEN_KEY))
+  })
+
+  const [authView, setAuthView] = useState('login')
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
@@ -35,25 +62,47 @@ function App() {
     )
   }
 
-  function handleLogin() {
-  setIsAuthenticated(true)
-}
+  function handleLogin(user) {
+    if (user) {
+      localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user))
+      setCurrentUser(user)
+    }
 
-function handleLogout() {
-  localStorage.removeItem('fieldsync-admin-auth')
-  setIsAuthenticated(false)
-  setActivePage('dashboard')
-}
+    localStorage.setItem(AUTH_STATE_KEY, 'true')
+    setIsAuthenticated(true)
+  }
 
-if (!isAuthenticated) {
-  return (
-    <LoginPage
-      onLogin={handleLogin}
-      theme={theme}
-      toggleTheme={toggleTheme}
-    />
-  )
-}
+  function handleLogout() {
+    localStorage.removeItem(AUTH_TOKEN_KEY)
+    localStorage.removeItem(AUTH_STATE_KEY)
+    localStorage.removeItem(AUTH_USER_KEY)
+
+    setCurrentUser(null)
+    setIsAuthenticated(false)
+    setActivePage('dashboard')
+  }
+
+    if (!isAuthenticated) {
+      if (authView === 'register') {
+        return (
+          <RegisterPage
+            onRegister={handleLogin}
+            onBackToLogin={() => setAuthView('login')}
+            theme={theme}
+            toggleTheme={toggleTheme}
+          />
+        )
+      }
+
+      return (
+        <LoginPage
+          onLogin={handleLogin}
+          onShowRegister={() => setAuthView('register')}
+          theme={theme}
+          toggleTheme={toggleTheme}
+        />
+      )
+    }
 
   function renderPage() {
     switch (activePage) {
@@ -107,6 +156,17 @@ if (!isAuthenticated) {
           </nav>
 
           <div className="flex items-center gap-3">
+            {currentUser && (
+              <div className="hidden text-right text-xs xl:block">
+                <p className="font-semibold">
+                  {currentUser.fullName || currentUser.username}
+                </p>
+                <p style={{ color: 'var(--header-muted)' }}>
+                  {currentUser.role || 'admin'}
+                </p>
+              </div>
+            )}
+
             <button
               type="button"
               onClick={toggleTheme}
@@ -115,17 +175,19 @@ if (!isAuthenticated) {
             >
               {theme === 'dark' ? '☀' : '☾'}
             </button>
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="hidden rounded-full border border-white/10 px-4 py-2 text-sm font-semibold transition hover:bg-white/10 xl:block"              >
-                Logout
-              </button>
+
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="hidden rounded-full border border-white/10 px-4 py-2 text-sm font-semibold transition hover:bg-white/10 xl:block"
+            >
+              Logout
+            </button>
           </div>
         </div>
       </header>
 
-    <main className="mx-auto max-w-7xl pb-6 pt-44 xl:pt-32">
+      <main className="mx-auto max-w-7xl pb-6 pt-44 xl:pt-32">
         <div className="page-shell min-w-0 overflow-hidden p-4 lg:p-6">
           {renderPage()}
         </div>

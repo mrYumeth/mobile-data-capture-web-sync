@@ -1,21 +1,29 @@
 import { useState } from 'react'
+import { authApi } from '../services/api'
 
-function LoginPage({ onLogin, theme, toggleTheme }) {
+function LoginPage({ onLogin, onShowRegister, theme, toggleTheme }) {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
 
-  function handleSubmit(event) {
-    event.preventDefault()
+async function handleSubmit(event) {
+  event.preventDefault()
+  setError('')
 
-    if (username.trim() === 'admin' && password === 'admin123') {
-      localStorage.setItem('fieldsync-admin-auth', 'true')
-      onLogin()
-      return
-    }
+  try {
+    const result = await authApi.login({
+      username: username.trim(),
+      password,
+    })
 
-    setError('Invalid username or password.')
+    localStorage.setItem('fieldsync-auth-token', result.token)
+    localStorage.setItem('fieldsync-admin-auth', 'true')
+
+    onLogin(result.user)
+  } catch (error) {
+    setError(error.message || 'Invalid username or password.')
   }
+}
 
   return (
     <div className="flex min-h-screen items-center justify-center px-4 py-8">
@@ -128,6 +136,13 @@ function LoginPage({ onLogin, theme, toggleTheme }) {
 
             <button type="submit" className="primary-button w-full">
               Login to Dashboard
+            </button>
+            <button
+              type="button"
+              onClick={onShowRegister}
+              className="w-full text-sm font-semibold text-[#EB5979]"
+            >
+              Create a normal user account
             </button>
           </form>
 
