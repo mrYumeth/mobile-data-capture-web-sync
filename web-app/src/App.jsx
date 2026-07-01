@@ -7,6 +7,7 @@ import CapturedRecordsPage from './pages/CapturedRecordsPage'
 import LoginPage from './pages/LoginPage'
 import UserManagementPage from './pages/UserManagementPage'
 import SetupPasswordPage from './pages/SetupPasswordPage'
+import ChangePasswordPage from './pages/ChangePasswordPage'
 
 const AUTH_TOKEN_KEY = 'fieldsync-auth-token'
 const AUTH_STATE_KEY = 'fieldsync-admin-auth'
@@ -19,6 +20,7 @@ const navigation = [
   { key: 'categories', label: 'Categories' },
   { key: 'capturedRecords', label: 'Captured Records' },
   { key: 'users', label: 'Users', adminOnly: true },
+  { key: 'account', label: 'Account', userOnly: true },
 ]
 
 function getStoredUser() {
@@ -124,6 +126,8 @@ if (!isAuthenticated) {
       ) : (
         <DashboardPage />
       )
+      case 'account':
+        return <ChangePasswordPage />
       default:
         return <DashboardPage />
     }
@@ -151,9 +155,19 @@ if (!isAuthenticated) {
           </div>
 
           <nav className="flex flex-wrap items-center gap-2">
-            {navigation
-              .filter((item) => !item.adminOnly || currentUser?.role === 'admin')
-              .map((item) => (
+                {navigation
+                  .filter((item) => {
+                    if (item.adminOnly && currentUser?.role !== 'admin') {
+                      return false
+                    }
+
+                    if (item.userOnly && currentUser?.role === 'admin') {
+                      return false
+                    }
+
+                    return true
+                  })
+                  .map((item) => (
                 <button
                   key={item.key}
                   type="button"

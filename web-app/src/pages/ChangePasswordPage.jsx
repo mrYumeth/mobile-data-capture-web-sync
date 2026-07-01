@@ -47,11 +47,11 @@ function ChangePasswordPage() {
     <section className="rounded-2xl bg-white p-6 shadow-sm">
       <div className="mb-6">
         <p className="text-sm font-bold uppercase tracking-[0.25em] text-[#EB5979]">
-          Admin Security
+        Account Security
         </p>
         <h3 className="mt-2 text-2xl font-extrabold">Change My Password</h3>
         <p className="mt-2 text-gray-500">
-          Update the password of the currently logged-in admin account.
+        Update the password of your currently logged-in FieldSync account.
         </p>
       </div>
 
