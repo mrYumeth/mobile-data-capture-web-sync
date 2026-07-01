@@ -6,6 +6,9 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 const path = require('path');
+const dns = require('dns');
+
+dns.setDefaultResultOrder('ipv4first');
 
 const pool = require('./src/config/db');
 const customerRoutes = require('./src/routes/customerRoutes');
@@ -134,15 +137,16 @@ async function sendUserInvitationEmail({
     return false;
   }
 
-  const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT || 587),
-    secure: process.env.SMTP_SECURE === 'true',
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-  });
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST,
+  port: Number(process.env.SMTP_PORT || 587),
+  secure: process.env.SMTP_SECURE === 'true',
+  family: 4,
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
+});
 
   const accessList = [];
 
