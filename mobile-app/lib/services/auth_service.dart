@@ -5,6 +5,13 @@ import 'package:http/http.dart' as http;
 
 import 'api_config.dart';
 
+class AuthResult {
+  final bool isSuccess;
+  final String message;
+
+  const AuthResult({required this.isSuccess, required this.message});
+}
+
 class AuthService {
   static const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
 
@@ -34,60 +41,117 @@ class AuthService {
     await clearSession();
   }
 
-  Future<bool> login({
+  Future<AuthResult> login({
     required String username,
     required String password,
   }) async {
-    final uri = Uri.parse('${ApiConfig.baseUrl}/api/auth/login');
+    try {
+      final uri = Uri.parse('${ApiConfig.baseUrl}/api/auth/login');
 
-    final response = await http
-        .post(
-          uri,
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            'username': username.trim(),
-            'password': password,
-            'clientType': 'mobile',
-          }),
-        )
-        .timeout(const Duration(seconds: 90));
+      final response = await http
+          .post(
+            uri,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'username': username.trim(),
+              'password': password,
+              'clientType': 'mobile',
+            }),
+          )
+          .timeout(const Duration(seconds: 90));
 
-    if (response.statusCode != 200) {
-      return false;
+      final decodedData = _decodeResponse(response.body);
+
+      if (response.statusCode != 200) {
+        return AuthResult(
+          isSuccess: false,
+          message:
+              decodedData['message']?.toString() ??
+              'Invalid username or password.',
+        );
+      }
+
+      await _saveAuthSession(response.body);
+
+      return const AuthResult(isSuccess: true, message: 'Login successful');
+    } catch (error) {
+      return AuthResult(
+        isSuccess: false,
+        message: 'Login failed. Please check your connection and try again.',
+      );
     }
-
-    await _saveAuthSession(response.body);
-    return true;
   }
 
-  Future<bool> register({
-    required String fullName,
-    required String username,
-    required String password,
-    String? email,
+  Future<AuthResult> changePassword({
+    required String currentPassword,
+    required String newPassword,
   }) async {
-    final uri = Uri.parse('${ApiConfig.baseUrl}/api/auth/register');
+    try {
+      final token = await getStoredToken();
 
-    final response = await http
-        .post(
-          uri,
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            'fullName': fullName.trim(),
-            'username': username.trim(),
-            'email': email?.trim(),
-            'password': password,
-            'clientType': 'mobile',
-          }),
-        )
-        .timeout(const Duration(seconds: 90));
+      if (token == null || token.isEmpty) {
+        return const AuthResult(
+          isSuccess: false,
+          message: 'Session expired. Please login again.',
+        );
+      }
 
-    if (response.statusCode != 201) {
-      return false;
+      final uri = Uri.parse('${ApiConfig.baseUrl}/api/auth/change-password');
+
+      final response = await http
+          .post(
+            uri,
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+            body: jsonEncode({
+              'currentPassword': currentPassword,
+              'newPassword': newPassword,
+            }),
+          )
+          .timeout(const Duration(seconds: 90));
+
+      final decodedData = _decodeResponse(response.body);
+
+      if (response.statusCode == 401) {
+        await clearSession();
+      }
+
+      if (response.statusCode != 200) {
+        return AuthResult(
+          isSuccess: false,
+          message:
+              decodedData['message']?.toString() ?? 'Password change failed.',
+        );
+      }
+
+      return AuthResult(
+        isSuccess: true,
+        message:
+            decodedData['message']?.toString() ??
+            'Password changed successfully.',
+      );
+    } catch (error) {
+      return AuthResult(
+        isSuccess: false,
+        message: 'Password change failed. Please try again.',
+      );
     }
+  }
 
-    await _saveAuthSession(response.body);
-    return true;
+  Map<String, dynamic> _decodeResponse(String responseBody) {
+    try {
+      final decodedData = jsonDecode(responseBody);
+
+      if (decodedData is Map<String, dynamic>) {
+        return decodedData;
+      }
+
+      return {};
+    } catch (_) {
+      return {};
+    }
   }
 
   Future<void> _saveAuthSession(String responseBody) async {

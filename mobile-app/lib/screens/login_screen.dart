@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../app/app_theme.dart';
 import '../services/auth_service.dart';
 import 'home_screen.dart';
-import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -38,7 +37,7 @@ class _LoginScreenState extends State<LoginScreen> {
       _isLoading = true;
     });
 
-    final isSuccess = await _authService.login(
+    final result = await _authService.login(
       username: _usernameController.text,
       password: _passwordController.text,
     );
@@ -49,14 +48,14 @@ class _LoginScreenState extends State<LoginScreen> {
       _isLoading = false;
     });
 
-    if (isSuccess) {
+    if (result.isSuccess) {
       Navigator.of(
         context,
       ).pushReplacement(MaterialPageRoute(builder: (_) => const HomeScreen()));
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Invalid username or password.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(result.message)));
     }
   }
 
@@ -224,28 +223,6 @@ class _LoginScreenState extends State<LoginScreen> {
                               : const Text('Login to App'),
                         ),
                         const SizedBox(height: 12),
-                        TextButton(
-                          onPressed: () {
-                            Navigator.of(context).pushReplacement(
-                              MaterialPageRoute(
-                                builder: (_) => const RegisterScreen(),
-                              ),
-                            );
-                          },
-                          child: const Text('Create a normal user account'),
-                        ),
-                        const SizedBox(height: 12),
-                        TextButton(
-                          onPressed: () {
-                            Navigator.of(context).pushReplacement(
-                              MaterialPageRoute(
-                                builder: (_) => const RegisterScreen(),
-                              ),
-                            );
-                          },
-                          child: const Text('Create a normal user account'),
-                        ),
-                        const SizedBox(height: 18),
                         Container(
                           padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
@@ -255,7 +232,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             borderRadius: BorderRadius.circular(18),
                           ),
                           child: Text(
-                            'Demo login: admin / admin123',
+                            'Accounts are created by the administrator. Please use the username provided in your FieldSync invitation email.',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               color: isDarkMode
@@ -263,6 +240,16 @@ class _LoginScreenState extends State<LoginScreen> {
                                   : AppTheme.mutedText,
                               fontWeight: FontWeight.w600,
                             ),
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: isDarkMode
+                                ? Colors.white.withValues(alpha: 0.08)
+                                : AppTheme.lightSurface,
+                            borderRadius: BorderRadius.circular(18),
                           ),
                         ),
                       ],

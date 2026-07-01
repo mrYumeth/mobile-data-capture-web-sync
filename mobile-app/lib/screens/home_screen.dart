@@ -7,6 +7,7 @@ import 'local_records_screen.dart';
 import 'login_screen.dart';
 import 'master_data_screen.dart';
 import 'sync_status_screen.dart';
+import 'change_password_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -62,6 +63,16 @@ class HomeScreen extends StatelessWidget {
           Navigator.of(
             context,
           ).push(MaterialPageRoute(builder: (_) => const MasterDataScreen()));
+        },
+      ),
+      _HomeAction(
+        title: 'Change Password',
+        subtitle: 'Update your FieldSync account password',
+        icon: Icons.lock_reset_outlined,
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const ChangePasswordScreen()),
+          );
         },
       ),
     ];
