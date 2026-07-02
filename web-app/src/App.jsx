@@ -12,6 +12,8 @@ import ChangePasswordPage from './pages/ChangePasswordPage'
 const AUTH_TOKEN_KEY = 'fieldsync-auth-token'
 const AUTH_STATE_KEY = 'fieldsync-admin-auth'
 const AUTH_USER_KEY = 'fieldsync-auth-user'
+const LAST_ACTIVITY_KEY = 'fieldsync-last-activity'
+const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000
 
 const navigation = [
   { key: 'dashboard', label: 'Dashboard' },
@@ -59,6 +61,66 @@ function App() {
     document.documentElement.setAttribute('data-theme', theme)
     localStorage.setItem('fieldsync-theme', theme)
   }, [theme])
+
+  useEffect(() => {
+  if (!isAuthenticated || setupToken) {
+    return undefined
+  }
+
+  let inactivityTimer
+
+  function logoutDueToInactivity() {
+    handleLogout()
+  }
+
+  function resetInactivityTimer() {
+    localStorage.setItem(LAST_ACTIVITY_KEY, Date.now().toString())
+
+    window.clearTimeout(inactivityTimer)
+
+    inactivityTimer = window.setTimeout(
+      logoutDueToInactivity,
+      INACTIVITY_TIMEOUT_MS
+    )
+  }
+
+  function checkActivityFromOtherTabs() {
+    const lastActivity = Number(localStorage.getItem(LAST_ACTIVITY_KEY))
+
+    if (
+      lastActivity &&
+      Date.now() - lastActivity >= INACTIVITY_TIMEOUT_MS
+    ) {
+      logoutDueToInactivity()
+    }
+  }
+
+  const activityEvents = [
+    'click',
+    'mousemove',
+    'keydown',
+    'scroll',
+    'touchstart',
+  ]
+
+  activityEvents.forEach((eventName) => {
+    window.addEventListener(eventName, resetInactivityTimer, true)
+  })
+
+  window.addEventListener('storage', checkActivityFromOtherTabs)
+
+  resetInactivityTimer()
+
+  return () => {
+    window.clearTimeout(inactivityTimer)
+
+    activityEvents.forEach((eventName) => {
+      window.removeEventListener(eventName, resetInactivityTimer, true)
+    })
+
+    window.removeEventListener('storage', checkActivityFromOtherTabs)
+  }
+}, [isAuthenticated, setupToken])
 
   function toggleTheme() {
     setTheme((currentTheme) =>
