@@ -18,6 +18,10 @@ const localUploadFolder = path.join(
   '../../uploads/captured-images'
 );
 
+const signedUrlExpiresInSeconds = Number(
+  process.env.SUPABASE_SIGNED_URL_EXPIRES_IN || 60 * 60
+);
+
 if (!fs.existsSync(localUploadFolder)) {
   fs.mkdirSync(localUploadFolder, { recursive: true });
 }
@@ -29,14 +33,58 @@ const upload = multer({
   },
 });
 
+function isHttpUrl(value) {
+  return /^https?:\/\//i.test(value || '');
+}
+
+function isSupabaseStoragePath(storagePath) {
+  return Boolean(
+    isSupabaseStorageConfigured() &&
+      storagePath &&
+      !isHttpUrl(storagePath) &&
+      storagePath.startsWith('captured-records/')
+  );
+}
+
+async function createSignedImageUrl(storagePath) {
+  if (!isSupabaseStoragePath(storagePath)) {
+    return null;
+  }
+
+  const supabase = getSupabaseClient();
+
+  const { data, error } = await supabase.storage
+    .from(storageBucket)
+    .createSignedUrl(storagePath, signedUrlExpiresInSeconds);
+
+  if (error) {
+    throw new Error(`Failed to create signed image URL: ${error.message}`);
+  }
+
+  return data.signedUrl;
+}
+
+async function resolveImageUrl(req, imageUrl, storagePath) {
+  if (isSupabaseStoragePath(storagePath)) {
+    try {
+      return await createSignedImageUrl(storagePath);
+    } catch (error) {
+      console.error(error.message);
+      return null;
+    }
+  }
+
+  return buildImageUrl(req, imageUrl);
+}
+
 function buildImageUrl(req, imageUrl) {
   if (!imageUrl) {
     return null;
   }
 
-  if (/^https?:\/\//i.test(imageUrl)) {
-    return imageUrl;
-  }
+if (isHttpUrl(imageUrl)) {
+  return imageUrl;
+}
 
   return `${req.protocol}://${req.get('host')}${imageUrl}`;
 }
@@ -67,12 +115,8 @@ async function uploadImageFile(file) {
       throw new Error(`Supabase image upload failed: ${error.message}`);
     }
 
-    const { data } = supabase.storage
-      .from(storageBucket)
-      .getPublicUrl(storagePath);
-
     return {
-      imageUrl: data.publicUrl,
+      imageUrl: null,
       storagePath,
     };
   }
@@ -112,26 +156,43 @@ async function attachImagesToRecords(req, records) {
   const imagesByRecordId = new Map();
 
   for (const image of imageResult.rows) {
+    const fullImageUrl = await resolveImageUrl(
+      req,
+      image.image_url,
+      image.storage_path
+    );
+
     const currentImages = imagesByRecordId.get(image.captured_record_id) || [];
 
     currentImages.push({
       ...image,
-      full_image_url: buildImageUrl(req, image.image_url),
+      image_url: isSupabaseStoragePath(image.storage_path)
+        ? null
+        : image.image_url,
+      full_image_url: fullImageUrl,
     });
 
     imagesByRecordId.set(image.captured_record_id, currentImages);
   }
 
-  return records.map((record) => {
-    const images = imagesByRecordId.get(record.id) || [];
+  return Promise.all(
+    records.map(async (record) => {
+      const images = imagesByRecordId.get(record.id) || [];
 
-    return {
-      ...record,
-      images,
-      full_image_url:
-        images[0]?.full_image_url || buildImageUrl(req, record.image_url),
-    };
-  });
+      const fullImageUrl =
+        images[0]?.full_image_url ||
+        (await resolveImageUrl(req, record.image_url, record.image_path));
+
+      return {
+        ...record,
+        image_url: isSupabaseStoragePath(record.image_path)
+          ? null
+          : record.image_url,
+        images,
+        full_image_url: fullImageUrl,
+      };
+    })
+  );
 }
 
 router.get('/', async (req, res) => {
