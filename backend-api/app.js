@@ -71,6 +71,15 @@ function generateSetupToken() {
   return crypto.randomBytes(32).toString('hex');
 }
 
+function createTenantSlug(value) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 100);
+}
+
 function buildUserPayload(user, clientType = 'web') {
   return {
     id: user.id,
@@ -330,6 +339,186 @@ app.post('/api/auth/login', async (req, res) => {
       message: 'Login failed',
       error: error.message,
     });
+  }
+});
+
+app.post('/api/auth/register-tenant', async (req, res) => {
+  const client = await pool.connect();
+
+  try {
+    const {
+      tenantName,
+      tenantSlug,
+      fullName,
+      username,
+      email,
+      password,
+    } = req.body;
+
+    if (!tenantName || !tenantName.trim()) {
+      return res.status(400).json({
+        message: 'Company name is required',
+      });
+    }
+
+    if (!fullName || !fullName.trim()) {
+      return res.status(400).json({
+        message: 'Admin full name is required',
+      });
+    }
+
+    if (!username || !username.trim()) {
+      return res.status(400).json({
+        message: 'Admin username is required',
+      });
+    }
+
+    if (!email || !email.trim()) {
+      return res.status(400).json({
+        message: 'Admin email is required',
+      });
+    }
+
+    if (!password || password.length < 6) {
+      return res.status(400).json({
+        message: 'Password must contain at least 6 characters',
+      });
+    }
+
+    const normalizedUsername = username.trim().toLowerCase();
+    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedTenantSlug = createTenantSlug(
+      tenantSlug || tenantName
+    );
+
+    if (!normalizedTenantSlug) {
+      return res.status(400).json({
+        message: 'A valid company slug is required',
+      });
+    }
+
+    await client.query('BEGIN');
+
+    const existingTenant = await client.query(
+      `
+      SELECT id
+      FROM tenants
+      WHERE slug = $1
+      LIMIT 1
+      `,
+      [normalizedTenantSlug]
+    );
+
+    if (existingTenant.rows.length > 0) {
+      await client.query('ROLLBACK');
+
+      return res.status(409).json({
+        message: 'Company slug is already registered',
+      });
+    }
+
+    const existingUser = await client.query(
+      `
+      SELECT id
+      FROM users
+      WHERE LOWER(username) = $1
+         OR LOWER(email) = $2
+      LIMIT 1
+      `,
+      [normalizedUsername, normalizedEmail]
+    );
+
+    if (existingUser.rows.length > 0) {
+      await client.query('ROLLBACK');
+
+      return res.status(409).json({
+        message: 'Admin username or email is already registered',
+      });
+    }
+
+    const tenantResult = await client.query(
+      `
+      INSERT INTO tenants (name, slug)
+      VALUES ($1, $2)
+      RETURNING id, name, slug, is_active, created_at
+      `,
+      [tenantName.trim(), normalizedTenantSlug]
+    );
+
+    const tenant = tenantResult.rows[0];
+
+    const userResult = await client.query(
+      `
+      INSERT INTO users (
+        tenant_id,
+        username,
+        email,
+        password_hash,
+        full_name,
+        role,
+        access_web,
+        access_mobile,
+        password_change_required,
+        confirmed_at,
+        is_active
+      )
+      VALUES (
+        $1,
+        $2,
+        $3,
+        $4,
+        $5,
+        'admin',
+        TRUE,
+        TRUE,
+        FALSE,
+        CURRENT_TIMESTAMP,
+        TRUE
+      )
+      RETURNING
+        id,
+        tenant_id,
+        username,
+        email,
+        full_name,
+        role,
+        access_web,
+        access_mobile,
+        password_change_required
+      `,
+      [
+        tenant.id,
+        normalizedUsername,
+        normalizedEmail,
+        createPasswordHash(password),
+        fullName.trim(),
+      ]
+    );
+
+    const user = userResult.rows[0];
+    const tokenPayload = buildUserPayload(user, 'web');
+
+    const token = jwt.sign(tokenPayload, getJwtSecret(), {
+      expiresIn: process.env.JWT_EXPIRES_IN || '12h',
+    });
+
+    await client.query('COMMIT');
+
+    res.status(201).json({
+      message: 'Company registered successfully',
+      tenant,
+      token,
+      user: tokenPayload,
+    });
+  } catch (error) {
+    await client.query('ROLLBACK');
+
+    res.status(500).json({
+      message: 'Company registration failed',
+      error: error.message,
+    });
+  } finally {
+    client.release();
   }
 });
 

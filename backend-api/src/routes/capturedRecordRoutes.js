@@ -198,34 +198,34 @@ async function attachImagesToRecords(req, records) {
 
 router.get('/', async (req, res) => {
   try {
-      const result = await pool.query(
-        `
-      SELECT
-        cr.id,
-        cr.customer_id,
-        cr.location_id,
-        cr.category_id,
-        c.name AS customer_name,
-        l.name AS location_name,
-        cat.name AS category_name,
-        cr.description,
-        cr.latitude,
-        cr.longitude,
-        cr.image_url,
-        cr.image_path,
-        cr.captured_at,
-        cr.received_at,
-        cr.created_at,
-        cr.updated_at
-      FROM captured_records cr
-      LEFT JOIN customers c ON c.id = cr.customer_id
-      LEFT JOIN locations l ON l.id = cr.location_id
-      LEFT JOIN categories cat ON cat.id = cr.category_id
-      WHERE cr.tenant_id = $1
-      ORDER BY cr.received_at DESC
-      `
-        [req.user.tenantId]
-    );
+     const result = await pool.query(
+  `
+  SELECT
+    cr.id,
+    cr.customer_id,
+    cr.location_id,
+    cr.category_id,
+    c.name AS customer_name,
+    l.name AS location_name,
+    cat.name AS category_name,
+    cr.description,
+    cr.latitude,
+    cr.longitude,
+    cr.image_url,
+    cr.image_path,
+    cr.captured_at,
+    cr.received_at,
+    cr.created_at,
+    cr.updated_at
+  FROM captured_records cr
+  LEFT JOIN customers c ON c.id = cr.customer_id
+  LEFT JOIN locations l ON l.id = cr.location_id
+  LEFT JOIN categories cat ON cat.id = cr.category_id
+  WHERE cr.tenant_id = $1
+  ORDER BY cr.received_at DESC
+  `,
+  [req.user.tenantId]
+);
 
     
 

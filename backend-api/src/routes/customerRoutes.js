@@ -145,8 +145,8 @@ router.delete('/:id', async (req, res) => {
     const { id } = req.params;
 
     const result = await pool.query(
-    'DELETE FROM customers WHERE id = $1 AND tenant_id = $2 RETURNING *'
-    [id, req.user.tenantId]
+      'DELETE FROM customers WHERE id = $1 AND tenant_id = $2 RETURNING *',
+      [id, req.user.tenantId]
     );
 
     if (result.rows.length === 0) {
