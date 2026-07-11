@@ -17,8 +17,15 @@ function requireAdmin(req, res) {
 router.get('/', async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT * FROM locations WHERE is_active = TRUE ORDER BY id DESC'
-    );
+    `
+    SELECT *
+    FROM locations
+    WHERE tenant_id = $1
+      AND is_active = TRUE
+    ORDER BY id DESC
+    `,
+    [req.user.tenantId]
+  );
 
     res.json(result.rows);
   } catch (error) {
@@ -44,11 +51,13 @@ router.post('/', async (req, res) => {
     }
 
     const result = await pool.query(
-      `INSERT INTO locations (name, address)
-       VALUES ($1, $2)
-       RETURNING *`,
-      [name, address]
-    );
+    `
+    INSERT INTO locations (tenant_id, name, address)
+    VALUES ($1, $2, $3)
+    RETURNING *
+    `,
+    [req.user.tenantId, name, address]
+  );
 
     res.status(201).json(result.rows[0]);
   } catch (error) {
@@ -69,13 +78,16 @@ router.put('/:id', async (req, res) => {
     const { name, address } = req.body;
 
     const result = await pool.query(
-      `UPDATE locations
-       SET name = $1,
-           address = $2,
-           updated_at = CURRENT_TIMESTAMP
-       WHERE id = $3
-       RETURNING *`,
-      [name, address, id]
+      `
+      UPDATE locations
+      SET name = $1,
+          address = $2,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = $3
+        AND tenant_id = $4
+      RETURNING *
+      `,
+      [name, address, id, req.user.tenantId]
     );
 
     if (result.rows.length === 0) {
@@ -102,8 +114,13 @@ router.delete('/:id', async (req, res) => {
     const { id } = req.params;
 
     const result = await pool.query(
-      'DELETE FROM locations WHERE id = $1 RETURNING *',
-      [id]
+      `
+      DELETE FROM locations
+      WHERE id = $1
+        AND tenant_id = $2
+      RETURNING *
+      `,
+      [id, req.user.tenantId]
     );
 
     if (result.rows.length === 0) {

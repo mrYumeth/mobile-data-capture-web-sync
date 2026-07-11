@@ -74,6 +74,7 @@ function generateSetupToken() {
 function buildUserPayload(user, clientType = 'web') {
   return {
     id: user.id,
+    tenantId: user.tenant_id,
     username: user.username,
     email: user.email,
     fullName: user.full_name,
@@ -269,6 +270,7 @@ app.post('/api/auth/login', async (req, res) => {
       `
       SELECT
         id,
+        tenant_id,
         username,
         email,
         password_hash,
@@ -402,62 +404,65 @@ app.post('/api/auth/setup-password', async (req, res) => {
  * Authenticated route.
  * Any logged-in user can change their password.
  */
-app.post('/api/auth/change-password', authenticateToken, async (req, res) => {
-  try {
-    const { currentPassword, newPassword } = req.body;
+    app.post('/api/auth/change-password', authenticateToken, async (req, res) => {
+      try {
+        const { currentPassword, newPassword } = req.body;
 
-    if (!currentPassword || !newPassword) {
-      return res.status(400).json({
-        message: 'Current password and new password are required',
-      });
-    }
+        if (!currentPassword || !newPassword) {
+          return res.status(400).json({
+            message: 'Current password and new password are required',
+          });
+        }
 
-    if (newPassword.length < 6) {
-      return res.status(400).json({
-        message: 'New password must contain at least 6 characters',
-      });
-    }
+        if (newPassword.length < 6) {
+          return res.status(400).json({
+            message: 'New password must contain at least 6 characters',
+          });
+        }
 
-    const result = await pool.query(
-      `
-      SELECT id, password_hash
-      FROM users
-      WHERE id = $1 AND is_active = TRUE
-      LIMIT 1
-      `,
-      [req.user.id]
-    );
+        const result = await pool.query(
+          `
+          SELECT id, password_hash
+          FROM users
+          WHERE id = $1
+            AND tenant_id = $2
+            AND is_active = TRUE
+          LIMIT 1
+          `,
+          [req.user.id, req.user.tenantId]
+        );
 
-    if (
-      result.rows.length === 0 ||
-      !verifyPassword(currentPassword, result.rows[0].password_hash)
-    ) {
-      return res.status(401).json({
-        message: 'Current password is incorrect',
-      });
-    }
+        if (
+          result.rows.length === 0 ||
+          !verifyPassword(currentPassword, result.rows[0].password_hash)
+        ) {
+          return res.status(401).json({
+            message: 'Current password is incorrect',
+          });
+        }
 
-    await pool.query(
-      `
-      UPDATE users
-      SET password_hash = $1,
-          password_change_required = FALSE,
-          updated_at = CURRENT_TIMESTAMP
-      WHERE id = $2
-      `,
-      [createPasswordHash(newPassword), req.user.id]
-    );
+        await pool.query(
+          `
+          UPDATE users
+          SET password_hash = $1,
+              password_change_required = FALSE,
+              updated_at = CURRENT_TIMESTAMP
+          WHERE id = $2
+            AND tenant_id = $3
+          `,
+          [createPasswordHash(newPassword), req.user.id, req.user.tenantId]
+        );
 
-    res.json({
-      message: 'Password changed successfully',
+        res.json({
+          message: 'Password changed successfully',
+        });
+      } catch (error) {
+        res.status(500).json({
+          message: 'Password change failed',
+          error: error.message,
+        });
+      }
     });
-  } catch (error) {
-    res.status(500).json({
-      message: 'Password change failed',
-      error: error.message,
-    });
-  }
-});
 
 app.get('/api/auth/me', authenticateToken, (req, res) => {
   res.json({
@@ -470,24 +475,27 @@ app.get('/api/auth/me', authenticateToken, (req, res) => {
  */
 app.get('/api/admin/users', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const result = await pool.query(
-      `
-      SELECT
-        id,
-        username,
-        email,
-        full_name,
-        role,
-        access_web,
-        access_mobile,
-        is_active,
-        confirmed_at,
-        password_change_required,
-        created_at
-      FROM users
-      ORDER BY created_at DESC
-      `
-    );
+      const result = await pool.query(
+        `
+        SELECT
+          id,
+          tenant_id,
+          username,
+          email,
+          full_name,
+          role,
+          access_web,
+          access_mobile,
+          is_active,
+          confirmed_at,
+          password_change_required,
+          created_at
+        FROM users
+        WHERE tenant_id = $1
+        ORDER BY created_at DESC
+        `,
+        [req.user.tenantId]
+      );
 
     res.json(result.rows);
   } catch (error) {
@@ -556,6 +564,7 @@ app.post('/api/admin/users', authenticateToken, requireAdmin, async (req, res) =
     const result = await pool.query(
       `
       INSERT INTO users (
+        tenant_id,
         username,
         email,
         password_hash,
@@ -572,19 +581,21 @@ app.post('/api/admin/users', authenticateToken, requireAdmin, async (req, res) =
       VALUES (
         $1,
         $2,
-        'PASSWORD_NOT_SET',
         $3,
-        'user',
+        'PASSWORD_NOT_SET',
         $4,
+        'user',
         $5,
-        TRUE,
         $6,
+        TRUE,
+        $7,
         CURRENT_TIMESTAMP + INTERVAL '7 days',
         TRUE,
-        $7
+        $8
       )
       RETURNING
         id,
+        tenant_id,
         username,
         email,
         full_name,
@@ -597,6 +608,7 @@ app.post('/api/admin/users', authenticateToken, requireAdmin, async (req, res) =
         created_at
       `,
       [
+        req.user.tenantId,
         normalizedUsername,
         normalizedEmail,
         fullName.trim(),
@@ -654,9 +666,10 @@ app.patch('/api/admin/users/:id', authenticateToken, requireAdmin, async (req, r
       SELECT id, role
       FROM users
       WHERE id = $1
+        AND tenant_id = $2
       LIMIT 1
       `,
-      [id]
+      [id, req.user.tenantId]
     );
 
     if (existingUser.rows.length === 0) {
@@ -708,8 +721,10 @@ app.patch('/api/admin/users/:id', authenticateToken, requireAdmin, async (req, r
           is_active = COALESCE($5, is_active),
           updated_at = CURRENT_TIMESTAMP
       WHERE id = $6
+        AND tenant_id = $7
       RETURNING
         id,
+        tenant_id,
         username,
         email,
         full_name,
@@ -728,8 +743,15 @@ app.patch('/api/admin/users/:id', authenticateToken, requireAdmin, async (req, r
         accessMobile,
         isActive,
         id,
+        req.user.tenantId,
       ]
     );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        message: 'User not found',
+      });
+    }
 
     res.json({
       message: 'User updated successfully',
@@ -759,9 +781,10 @@ app.delete('/api/admin/users/:id', authenticateToken, requireAdmin, async (req, 
       SELECT id, role
       FROM users
       WHERE id = $1
+        AND tenant_id = $2
       LIMIT 1
       `,
-      [id]
+      [id, req.user.tenantId]
     );
 
     if (existingUser.rows.length === 0) {
@@ -780,14 +803,16 @@ app.delete('/api/admin/users/:id', authenticateToken, requireAdmin, async (req, 
       `
       DELETE FROM users
       WHERE id = $1
+        AND tenant_id = $2
       RETURNING
         id,
+        tenant_id,
         username,
         email,
         full_name,
         role
       `,
-      [id]
+      [id, req.user.tenantId]
     );
 
     res.json({
@@ -824,8 +849,10 @@ app.patch('/api/admin/users/:id/access', authenticateToken, requireAdmin, async 
           is_active = COALESCE($3, is_active),
           updated_at = CURRENT_TIMESTAMP
       WHERE id = $4
+        AND tenant_id = $5
       RETURNING
         id,
+        tenant_id,
         username,
         email,
         full_name,
@@ -837,7 +864,7 @@ app.patch('/api/admin/users/:id/access', authenticateToken, requireAdmin, async 
         password_change_required,
         created_at
       `,
-      [accessWeb, accessMobile, isActive, id]
+      [accessWeb, accessMobile, isActive, id, req.user.tenantId]
     );
 
     if (result.rows.length === 0) {

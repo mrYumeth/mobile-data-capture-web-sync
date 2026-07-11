@@ -17,7 +17,14 @@ function requireAdmin(req, res) {
 router.get('/', async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT * FROM categories WHERE is_active = TRUE ORDER BY id DESC'
+      `
+      SELECT *
+      FROM categories
+      WHERE tenant_id = $1
+        AND is_active = TRUE
+      ORDER BY id DESC
+      `,
+      [req.user.tenantId]
     );
 
     res.json(result.rows);
@@ -44,10 +51,12 @@ router.post('/', async (req, res) => {
     }
 
     const result = await pool.query(
-      `INSERT INTO categories (name, description)
-       VALUES ($1, $2)
-       RETURNING *`,
-      [name, description]
+      `
+      INSERT INTO categories (tenant_id, name, description)
+      VALUES ($1, $2, $3)
+      RETURNING *
+      `,
+      [req.user.tenantId, name, description]
     );
 
     res.status(201).json(result.rows[0]);
@@ -69,13 +78,16 @@ router.put('/:id', async (req, res) => {
     const { name, description } = req.body;
 
     const result = await pool.query(
-      `UPDATE categories
-       SET name = $1,
-           description = $2,
-           updated_at = CURRENT_TIMESTAMP
-       WHERE id = $3
-       RETURNING *`,
-      [name, description, id]
+      `
+      UPDATE categories
+      SET name = $1,
+          description = $2,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = $3
+        AND tenant_id = $4
+      RETURNING *
+      `,
+      [name, description, id, req.user.tenantId]
     );
 
     if (result.rows.length === 0) {
@@ -102,8 +114,13 @@ router.delete('/:id', async (req, res) => {
     const { id } = req.params;
 
     const result = await pool.query(
-      'DELETE FROM categories WHERE id = $1 RETURNING *',
-      [id]
+      `
+      DELETE FROM categories
+      WHERE id = $1
+        AND tenant_id = $2
+      RETURNING *
+      `,
+      [id, req.user.tenantId]
     );
 
     if (result.rows.length === 0) {

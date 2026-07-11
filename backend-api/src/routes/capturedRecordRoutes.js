@@ -148,9 +148,10 @@ async function attachImagesToRecords(req, records) {
       created_at
     FROM captured_images
     WHERE captured_record_id = ANY($1::int[])
+      AND tenant_id = $2
     ORDER BY id ASC
     `,
-    [recordIds]
+    [recordIds, req.user.tenantId]
   );
 
   const imagesByRecordId = new Map();
@@ -197,7 +198,8 @@ async function attachImagesToRecords(req, records) {
 
 router.get('/', async (req, res) => {
   try {
-    const result = await pool.query(`
+      const result = await pool.query(
+        `
       SELECT
         cr.id,
         cr.customer_id,
@@ -219,8 +221,13 @@ router.get('/', async (req, res) => {
       LEFT JOIN customers c ON c.id = cr.customer_id
       LEFT JOIN locations l ON l.id = cr.location_id
       LEFT JOIN categories cat ON cat.id = cr.category_id
+      WHERE cr.tenant_id = $1
       ORDER BY cr.received_at DESC
-    `);
+      `
+        [req.user.tenantId]
+    );
+
+    
 
     const records = await attachImagesToRecords(req, result.rows);
 
@@ -261,9 +268,10 @@ router.get('/:id', async (req, res) => {
       LEFT JOIN locations l ON l.id = cr.location_id
       LEFT JOIN categories cat ON cat.id = cr.category_id
       WHERE cr.id = $1
+        AND cr.tenant_id = $2
       LIMIT 1
       `,
-      [id]
+      [id, req.user.tenantId]
     );
 
     if (result.rows.length === 0) {
@@ -309,6 +317,38 @@ router.post(
         });
       }
 
+      const referenceCheck = await pool.query(
+        `
+        SELECT
+          EXISTS (
+            SELECT 1 FROM customers
+            WHERE id = $1 AND tenant_id = $4
+          ) AS customer_exists,
+          EXISTS (
+            SELECT 1 FROM locations
+            WHERE id = $2 AND tenant_id = $4
+          ) AS location_exists,
+          EXISTS (
+            SELECT 1 FROM categories
+            WHERE id = $3 AND tenant_id = $4
+          ) AS category_exists
+        `,
+        [customer_id, location_id, category_id, req.user.tenantId]
+      );
+
+      const referenceStatus = referenceCheck.rows[0];
+
+      if (
+        !referenceStatus.customer_exists ||
+        !referenceStatus.location_exists ||
+        !referenceStatus.category_exists
+      ) {
+        return res.status(400).json({
+          message:
+            'Selected customer, location, or category does not belong to your tenant',
+        });
+      }
+
       const uploadedFiles = getUploadedImageFiles(req);
 
       const uploadedImages = [];
@@ -328,31 +368,33 @@ router.post(
 
       const recordResult = await client.query(
         `
-        INSERT INTO captured_records (
-          customer_id,
-          location_id,
-          category_id,
-          description,
-          latitude,
-          longitude,
-          image_url,
-          image_path,
-          captured_at
-        )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      INSERT INTO captured_records (
+        tenant_id,
+        customer_id,
+        location_id,
+        category_id,
+        description,
+        latitude,
+        longitude,
+        image_url,
+        image_path,
+        captured_at
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
         RETURNING *
         `,
-        [
-          customer_id,
-          location_id,
-          category_id,
-          description || '',
-          latitude || null,
-          longitude || null,
-          imageUrl,
-          imagePath,
-          captured_at || new Date().toISOString(),
-        ]
+      [
+        req.user.tenantId,
+        customer_id,
+        location_id,
+        category_id,
+        description || '',
+        latitude || null,
+        longitude || null,
+        imageUrl,
+        imagePath,
+        captured_at || new Date().toISOString(),
+      ]
       );
 
       const capturedRecord = recordResult.rows[0];
@@ -360,14 +402,15 @@ router.post(
       for (const image of uploadedImages) {
         await client.query(
           `
-          INSERT INTO captured_images (
-            captured_record_id,
-            image_url,
-            storage_path
-          )
-          VALUES ($1, $2, $3)
+      INSERT INTO captured_images (
+        captured_record_id,
+        tenant_id,
+        image_url,
+        storage_path
+      )
+      VALUES ($1, $2, $3, $4)
           `,
-          [capturedRecord.id, image.imageUrl, image.storagePath]
+      [capturedRecord.id, req.user.tenantId, image.imageUrl, image.storagePath]
         );
       }
 

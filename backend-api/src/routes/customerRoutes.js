@@ -25,7 +25,13 @@ function isValidPhoneNumber(phone) {
 router.get('/', async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT * FROM customers ORDER BY id DESC'
+      `
+      SELECT *
+      FROM customers
+      WHERE tenant_id = $1
+      ORDER BY id DESC
+      `,
+      [req.user.tenantId]
     );
 
     res.json(result.rows);
@@ -58,10 +64,18 @@ router.post('/', async (req, res) => {
     }
 
     const result = await pool.query(
-      `INSERT INTO customers (name, phone, email, address)
-       VALUES ($1, $2, $3, $4)
-       RETURNING *`,
-      [name.trim(), phone || null, email || null, address || null]
+      `
+      INSERT INTO customers (tenant_id, name, phone, email, address)
+      VALUES ($1, $2, $3, $4, $5)
+      RETURNING *
+      `,
+      [
+        req.user.tenantId,
+        name.trim(),
+        phone || null,
+        email || null,
+        address || null,
+      ]
     );
 
     res.status(201).json(result.rows[0]);
@@ -101,9 +115,10 @@ router.put('/:id', async (req, res) => {
            email = $3,
            address = $4,
            updated_at = CURRENT_TIMESTAMP
-       WHERE id = $5
+      WHERE id = $5
+        AND tenant_id = $6
        RETURNING *`,
-      [name.trim(), phone || null, email || null, address || null, id]
+      [name.trim(), phone || null, email || null, address || null, id, req.user.tenantId]
     );
 
     if (result.rows.length === 0) {
@@ -130,8 +145,8 @@ router.delete('/:id', async (req, res) => {
     const { id } = req.params;
 
     const result = await pool.query(
-      'DELETE FROM customers WHERE id = $1 RETURNING *',
-      [id]
+    'DELETE FROM customers WHERE id = $1 AND tenant_id = $2 RETURNING *'
+    [id, req.user.tenantId]
     );
 
     if (result.rows.length === 0) {
