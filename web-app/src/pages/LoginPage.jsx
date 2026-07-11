@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { authApi } from '../services/api'
 
-function LoginPage({ onLogin, theme, toggleTheme }) {
+function LoginPage({ onLogin, onShowRegister, theme, toggleTheme }) {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -138,13 +138,27 @@ async function handleSubmit(event) {
               Login to Dashboard
             </button>
           </form>
-
           <div className="mt-6 rounded-2xl bg-white p-4 text-sm text-gray-600">
             <p className="font-semibold text-gray-800">Secure access only</p>
             <p className="mt-1">
               User accounts are created by the administrator. Please use the username
               provided by your admin.
             </p>
+          </div>
+
+          <div className="mt-4 rounded-2xl bg-white p-4 text-sm text-gray-600">
+            <p className="font-semibold text-gray-800">New company?</p>
+            <p className="mt-1">
+              Register your company to create a new tenant workspace and first admin account.
+            </p>
+
+            <button
+              type="button"
+              onClick={onShowRegister}
+              className="mt-3 font-semibold text-[#EB5979] hover:underline"
+            >
+              Register Company
+            </button>
           </div>
         </div>
       </div>

@@ -8,6 +8,7 @@ import LoginPage from './pages/LoginPage'
 import UserManagementPage from './pages/UserManagementPage'
 import SetupPasswordPage from './pages/SetupPasswordPage'
 import ChangePasswordPage from './pages/ChangePasswordPage'
+import RegisterTenantPage from './pages/RegisterTenantPage'
 
 const AUTH_TOKEN_KEY = 'fieldsync-auth-token'
 const AUTH_STATE_KEY = 'fieldsync-admin-auth'
@@ -42,6 +43,8 @@ function getStoredUser() {
 
 function App() {
   const [activePage, setActivePage] = useState('dashboard')
+
+  const [showTenantRegister, setShowTenantRegister] = useState(false)
 
   const setupToken = new URLSearchParams(window.location.search).get('setupToken')
 
@@ -162,10 +165,25 @@ function App() {
   )
 }
 
+if (!isAuthenticated && showTenantRegister) {
+  return (
+    <RegisterTenantPage
+      onRegisterSuccess={(user) => {
+        handleLogin(user)
+        setShowTenantRegister(false)
+      }}
+      onBackToLogin={() => setShowTenantRegister(false)}
+      theme={theme}
+      toggleTheme={toggleTheme}
+    />
+  )
+}
+
 if (!isAuthenticated) {
   return (
     <LoginPage
       onLogin={handleLogin}
+      onShowRegister={() => setShowTenantRegister(true)}
       theme={theme}
       toggleTheme={toggleTheme}
     />

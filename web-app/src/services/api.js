@@ -51,6 +51,13 @@ export const authApi = {
     })
   },
 
+  registerTenant(data) {
+  return request('/api/auth/register-tenant', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+},
+
   setupPassword(data) {
     return request('/api/auth/setup-password', {
       method: 'POST',
