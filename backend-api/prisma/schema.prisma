@@ -1,0 +1,133 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model captured_images {
+  id                 Int               @id @default(autoincrement())
+  captured_record_id Int?
+  image_url          String?
+  storage_path       String?
+  created_at         DateTime?         @default(now()) @db.Timestamp(6)
+  tenant_id          Int
+  captured_records   captured_records? @relation(fields: [captured_record_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  tenants            tenants           @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([tenant_id], map: "idx_captured_images_tenant_id")
+}
+
+model captured_records {
+  id              Int               @id @default(autoincrement())
+  customer_id     Int?
+  location_id     Int?
+  category_id     Int?
+  description     String?
+  latitude        Decimal?          @db.Decimal(10, 7)
+  longitude       Decimal?          @db.Decimal(10, 7)
+  image_url       String?
+  image_path      String?
+  captured_at     DateTime?         @db.Timestamp(6)
+  received_at     DateTime?         @default(now()) @db.Timestamp(6)
+  created_at      DateTime?         @default(now()) @db.Timestamp(6)
+  updated_at      DateTime?         @default(now()) @db.Timestamp(6)
+  tenant_id       Int
+  captured_images captured_images[]
+  categories      categories?       @relation(fields: [category_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  customers       customers?        @relation(fields: [customer_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  locations       locations?        @relation(fields: [location_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  tenants         tenants           @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([tenant_id, category_id], map: "idx_captured_records_tenant_category")
+  @@index([tenant_id, customer_id], map: "idx_captured_records_tenant_customer")
+  @@index([tenant_id], map: "idx_captured_records_tenant_id")
+  @@index([tenant_id, location_id], map: "idx_captured_records_tenant_location")
+}
+
+model categories {
+  id               Int                @id @default(autoincrement())
+  name             String             @db.VarChar(150)
+  description      String?
+  is_active        Boolean?           @default(true)
+  created_at       DateTime?          @default(now()) @db.Timestamp(6)
+  updated_at       DateTime?          @default(now()) @db.Timestamp(6)
+  tenant_id        Int
+  captured_records captured_records[]
+  tenants          tenants            @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([tenant_id], map: "idx_categories_tenant_id")
+}
+
+model customers {
+  id               Int                @id @default(autoincrement())
+  name             String             @db.VarChar(150)
+  phone            String?            @db.VarChar(30)
+  email            String?            @db.VarChar(150)
+  address          String?
+  is_active        Boolean?           @default(true)
+  created_at       DateTime?          @default(now()) @db.Timestamp(6)
+  updated_at       DateTime?          @default(now()) @db.Timestamp(6)
+  tenant_id        Int
+  captured_records captured_records[]
+  tenants          tenants            @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([tenant_id], map: "idx_customers_tenant_id")
+}
+
+model locations {
+  id               Int                @id @default(autoincrement())
+  name             String             @db.VarChar(150)
+  address          String?
+  is_active        Boolean?           @default(true)
+  created_at       DateTime?          @default(now()) @db.Timestamp(6)
+  updated_at       DateTime?          @default(now()) @db.Timestamp(6)
+  tenant_id        Int
+  captured_records captured_records[]
+  tenants          tenants            @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([tenant_id], map: "idx_locations_tenant_id")
+}
+
+model tenants {
+  id               Int                @id @default(autoincrement())
+  name             String             @db.VarChar(150)
+  slug             String             @unique @db.VarChar(100)
+  is_active        Boolean            @default(true)
+  created_at       DateTime?          @default(now()) @db.Timestamp(6)
+  updated_at       DateTime?          @default(now()) @db.Timestamp(6)
+  captured_images  captured_images[]
+  captured_records captured_records[]
+  categories       categories[]
+  customers        customers[]
+  locations        locations[]
+  users            users[]
+}
+
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model users {
+  id                       Int       @id @default(autoincrement())
+  username                 String    @unique @db.VarChar(100)
+  password_hash            String
+  full_name                String?   @db.VarChar(150)
+  role                     String    @default("mobile_user") @db.VarChar(50)
+  is_active                Boolean   @default(true)
+  created_at               DateTime? @default(now()) @db.Timestamp(6)
+  updated_at               DateTime? @default(now()) @db.Timestamp(6)
+  email                    String?   @db.VarChar(150)
+  access_web               Boolean   @default(false)
+  access_mobile            Boolean   @default(true)
+  password_change_required Boolean   @default(true)
+  confirmation_token       String?
+  confirmation_expires_at  DateTime? @db.Timestamp(6)
+  confirmed_at             DateTime? @db.Timestamp(6)
+  created_by               Int?
+  tenant_id                Int
+  users                    users?    @relation("usersTousers", fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  other_users              users[]   @relation("usersTousers")
+  tenants                  tenants   @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([tenant_id], map: "idx_users_tenant_id")
+}
