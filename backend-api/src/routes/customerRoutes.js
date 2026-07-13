@@ -1,5 +1,5 @@
 const express = require('express');
-const pool = require('../config/db');
+const prisma = require('../config/prisma');
 
 const router = express.Router();
 
@@ -24,17 +24,16 @@ function isValidPhoneNumber(phone) {
 
 router.get('/', async (req, res) => {
   try {
-    const result = await pool.query(
-      `
-      SELECT *
-      FROM customers
-      WHERE tenant_id = $1
-      ORDER BY id DESC
-      `,
-      [req.user.tenantId]
-    );
+    const customers = await prisma.customers.findMany({
+      where: {
+        tenant_id: req.user.tenantId,
+      },
+      orderBy: {
+        id: 'desc',
+      },
+    });
 
-    res.json(result.rows);
+    res.json(customers);
   } catch (error) {
     res.status(500).json({
       message: 'Failed to fetch customers',
@@ -63,22 +62,17 @@ router.post('/', async (req, res) => {
       });
     }
 
-    const result = await pool.query(
-      `
-      INSERT INTO customers (tenant_id, name, phone, email, address)
-      VALUES ($1, $2, $3, $4, $5)
-      RETURNING *
-      `,
-      [
-        req.user.tenantId,
-        name.trim(),
-        phone || null,
-        email || null,
-        address || null,
-      ]
-    );
+    const customer = await prisma.customers.create({
+      data: {
+        tenant_id: req.user.tenantId,
+        name: name.trim(),
+        phone: phone || null,
+        email: email || null,
+        address: address || null,
+      },
+    });
 
-    res.status(201).json(result.rows[0]);
+    res.status(201).json(customer);
   } catch (error) {
     res.status(500).json({
       message: 'Failed to create customer',
@@ -95,6 +89,7 @@ router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { name, phone, email, address } = req.body;
+    const customerId = Number(id);
 
     if (!name || !name.trim()) {
       return res.status(400).json({
@@ -108,26 +103,33 @@ router.put('/:id', async (req, res) => {
       });
     }
 
-    const result = await pool.query(
-      `UPDATE customers
-       SET name = $1,
-           phone = $2,
-           email = $3,
-           address = $4,
-           updated_at = CURRENT_TIMESTAMP
-      WHERE id = $5
-        AND tenant_id = $6
-       RETURNING *`,
-      [name.trim(), phone || null, email || null, address || null, id, req.user.tenantId]
-    );
+    const existingCustomer = await prisma.customers.findFirst({
+      where: {
+        id: customerId,
+        tenant_id: req.user.tenantId,
+      },
+    });
 
-    if (result.rows.length === 0) {
+    if (!existingCustomer) {
       return res.status(404).json({
         message: 'Customer not found',
       });
     }
 
-    res.json(result.rows[0]);
+    const updatedCustomer = await prisma.customers.update({
+      where: {
+        id: customerId,
+      },
+      data: {
+        name: name.trim(),
+        phone: phone || null,
+        email: email || null,
+        address: address || null,
+        updated_at: new Date(),
+      },
+    });
+
+    res.json(updatedCustomer);
   } catch (error) {
     res.status(500).json({
       message: 'Failed to update customer',
@@ -143,21 +145,30 @@ router.delete('/:id', async (req, res) => {
 
   try {
     const { id } = req.params;
+    const customerId = Number(id);
 
-    const result = await pool.query(
-      'DELETE FROM customers WHERE id = $1 AND tenant_id = $2 RETURNING *',
-      [id, req.user.tenantId]
-    );
+    const existingCustomer = await prisma.customers.findFirst({
+      where: {
+        id: customerId,
+        tenant_id: req.user.tenantId,
+      },
+    });
 
-    if (result.rows.length === 0) {
+    if (!existingCustomer) {
       return res.status(404).json({
         message: 'Customer not found',
       });
     }
 
+    const deletedCustomer = await prisma.customers.delete({
+      where: {
+        id: customerId,
+      },
+    });
+
     res.json({
       message: 'Customer deleted successfully',
-      deletedCustomer: result.rows[0],
+      deletedCustomer,
     });
   } catch (error) {
     res.status(500).json({
