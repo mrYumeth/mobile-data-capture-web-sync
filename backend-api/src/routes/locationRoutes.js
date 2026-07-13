@@ -1,5 +1,5 @@
 const express = require('express');
-const pool = require('../config/db');
+const prisma = require('../config/prisma');
 
 const router = express.Router();
 
@@ -16,18 +16,17 @@ function requireAdmin(req, res) {
 
 router.get('/', async (req, res) => {
   try {
-    const result = await pool.query(
-    `
-    SELECT *
-    FROM locations
-    WHERE tenant_id = $1
-      AND is_active = TRUE
-    ORDER BY id DESC
-    `,
-    [req.user.tenantId]
-  );
+    const locations = await prisma.locations.findMany({
+      where: {
+        tenant_id: req.user.tenantId,
+        is_active: true,
+      },
+      orderBy: {
+        id: 'desc',
+      },
+    });
 
-    res.json(result.rows);
+    res.json(locations);
   } catch (error) {
     res.status(500).json({
       message: 'Failed to fetch locations',
@@ -44,22 +43,21 @@ router.post('/', async (req, res) => {
   try {
     const { name, address } = req.body;
 
-    if (!name) {
+    if (!name || !name.trim()) {
       return res.status(400).json({
         message: 'Location name is required',
       });
     }
 
-    const result = await pool.query(
-    `
-    INSERT INTO locations (tenant_id, name, address)
-    VALUES ($1, $2, $3)
-    RETURNING *
-    `,
-    [req.user.tenantId, name, address]
-  );
+    const location = await prisma.locations.create({
+      data: {
+        tenant_id: req.user.tenantId,
+        name: name.trim(),
+        address: address || null,
+      },
+    });
 
-    res.status(201).json(result.rows[0]);
+    res.status(201).json(location);
   } catch (error) {
     res.status(500).json({
       message: 'Failed to create location',
@@ -76,27 +74,45 @@ router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { name, address } = req.body;
+    const locationId = Number(id);
 
-    const result = await pool.query(
-      `
-      UPDATE locations
-      SET name = $1,
-          address = $2,
-          updated_at = CURRENT_TIMESTAMP
-      WHERE id = $3
-        AND tenant_id = $4
-      RETURNING *
-      `,
-      [name, address, id, req.user.tenantId]
-    );
+    if (!name || !name.trim()) {
+      return res.status(400).json({
+        message: 'Location name is required',
+      });
+    }
 
-    if (result.rows.length === 0) {
+    if (!Number.isInteger(locationId)) {
+      return res.status(400).json({
+        message: 'Invalid location ID',
+      });
+    }
+
+    const existingLocation = await prisma.locations.findFirst({
+      where: {
+        id: locationId,
+        tenant_id: req.user.tenantId,
+      },
+    });
+
+    if (!existingLocation) {
       return res.status(404).json({
         message: 'Location not found',
       });
     }
 
-    res.json(result.rows[0]);
+    const updatedLocation = await prisma.locations.update({
+      where: {
+        id: locationId,
+      },
+      data: {
+        name: name.trim(),
+        address: address || null,
+        updated_at: new Date(),
+      },
+    });
+
+    res.json(updatedLocation);
   } catch (error) {
     res.status(500).json({
       message: 'Failed to update location',
@@ -112,26 +128,36 @@ router.delete('/:id', async (req, res) => {
 
   try {
     const { id } = req.params;
+    const locationId = Number(id);
 
-    const result = await pool.query(
-      `
-      DELETE FROM locations
-      WHERE id = $1
-        AND tenant_id = $2
-      RETURNING *
-      `,
-      [id, req.user.tenantId]
-    );
+    if (!Number.isInteger(locationId)) {
+      return res.status(400).json({
+        message: 'Invalid location ID',
+      });
+    }
 
-    if (result.rows.length === 0) {
+    const existingLocation = await prisma.locations.findFirst({
+      where: {
+        id: locationId,
+        tenant_id: req.user.tenantId,
+      },
+    });
+
+    if (!existingLocation) {
       return res.status(404).json({
         message: 'Location not found',
       });
     }
 
+    const deletedLocation = await prisma.locations.delete({
+      where: {
+        id: locationId,
+      },
+    });
+
     res.json({
       message: 'Location deleted successfully',
-      deletedLocation: result.rows[0],
+      deletedLocation,
     });
   } catch (error) {
     res.status(500).json({

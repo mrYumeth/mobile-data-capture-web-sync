@@ -1,5 +1,5 @@
 const express = require('express');
-const pool = require('../config/db');
+const prisma = require('../config/prisma');
 
 const router = express.Router();
 
@@ -16,18 +16,17 @@ function requireAdmin(req, res) {
 
 router.get('/', async (req, res) => {
   try {
-    const result = await pool.query(
-      `
-      SELECT *
-      FROM categories
-      WHERE tenant_id = $1
-        AND is_active = TRUE
-      ORDER BY id DESC
-      `,
-      [req.user.tenantId]
-    );
+    const categories = await prisma.categories.findMany({
+      where: {
+        tenant_id: req.user.tenantId,
+        is_active: true,
+      },
+      orderBy: {
+        id: 'desc',
+      },
+    });
 
-    res.json(result.rows);
+    res.json(categories);
   } catch (error) {
     res.status(500).json({
       message: 'Failed to fetch categories',
@@ -44,22 +43,21 @@ router.post('/', async (req, res) => {
   try {
     const { name, description } = req.body;
 
-    if (!name) {
+    if (!name || !name.trim()) {
       return res.status(400).json({
         message: 'Category name is required',
       });
     }
 
-    const result = await pool.query(
-      `
-      INSERT INTO categories (tenant_id, name, description)
-      VALUES ($1, $2, $3)
-      RETURNING *
-      `,
-      [req.user.tenantId, name, description]
-    );
+    const category = await prisma.categories.create({
+      data: {
+        tenant_id: req.user.tenantId,
+        name: name.trim(),
+        description: description || null,
+      },
+    });
 
-    res.status(201).json(result.rows[0]);
+    res.status(201).json(category);
   } catch (error) {
     res.status(500).json({
       message: 'Failed to create category',
@@ -76,27 +74,45 @@ router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { name, description } = req.body;
+    const categoryId = Number(id);
 
-    const result = await pool.query(
-      `
-      UPDATE categories
-      SET name = $1,
-          description = $2,
-          updated_at = CURRENT_TIMESTAMP
-      WHERE id = $3
-        AND tenant_id = $4
-      RETURNING *
-      `,
-      [name, description, id, req.user.tenantId]
-    );
+    if (!name || !name.trim()) {
+      return res.status(400).json({
+        message: 'Category name is required',
+      });
+    }
 
-    if (result.rows.length === 0) {
+    if (!Number.isInteger(categoryId)) {
+      return res.status(400).json({
+        message: 'Invalid category ID',
+      });
+    }
+
+    const existingCategory = await prisma.categories.findFirst({
+      where: {
+        id: categoryId,
+        tenant_id: req.user.tenantId,
+      },
+    });
+
+    if (!existingCategory) {
       return res.status(404).json({
         message: 'Category not found',
       });
     }
 
-    res.json(result.rows[0]);
+    const updatedCategory = await prisma.categories.update({
+      where: {
+        id: categoryId,
+      },
+      data: {
+        name: name.trim(),
+        description: description || null,
+        updated_at: new Date(),
+      },
+    });
+
+    res.json(updatedCategory);
   } catch (error) {
     res.status(500).json({
       message: 'Failed to update category',
@@ -112,26 +128,36 @@ router.delete('/:id', async (req, res) => {
 
   try {
     const { id } = req.params;
+    const categoryId = Number(id);
 
-    const result = await pool.query(
-      `
-      DELETE FROM categories
-      WHERE id = $1
-        AND tenant_id = $2
-      RETURNING *
-      `,
-      [id, req.user.tenantId]
-    );
+    if (!Number.isInteger(categoryId)) {
+      return res.status(400).json({
+        message: 'Invalid category ID',
+      });
+    }
 
-    if (result.rows.length === 0) {
+    const existingCategory = await prisma.categories.findFirst({
+      where: {
+        id: categoryId,
+        tenant_id: req.user.tenantId,
+      },
+    });
+
+    if (!existingCategory) {
       return res.status(404).json({
         message: 'Category not found',
       });
     }
 
+    const deletedCategory = await prisma.categories.delete({
+      where: {
+        id: categoryId,
+      },
+    });
+
     res.json({
       message: 'Category deleted successfully',
-      deletedCategory: result.rows[0],
+      deletedCategory,
     });
   } catch (error) {
     res.status(500).json({
