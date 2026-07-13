@@ -10,9 +10,11 @@ class MasterDataSyncService {
     final locations = await _apiService.getList('/api/locations');
     final categories = await _apiService.getList('/api/categories');
 
-    await _databaseService.upsertCustomers(customers);
-    await _databaseService.upsertLocations(locations);
-    await _databaseService.upsertCategories(categories);
+    await _databaseService.replaceMasterData(
+      customers: customers,
+      locations: locations,
+      categories: categories,
+    );
 
     return MasterDataSyncResult(
       customerCount: customers.length,

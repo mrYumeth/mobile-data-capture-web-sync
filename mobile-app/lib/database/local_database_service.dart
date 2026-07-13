@@ -26,147 +26,77 @@ class LocalDatabaseService {
     final databasePath = await getDatabasesPath();
     final fullPath = path.join(databasePath, 'mobile_data_capture.db');
 
-    return openDatabase(fullPath, version: 1, onCreate: _createDatabase);
+    return openDatabase(
+      fullPath,
+      version: 2,
+      onCreate: _createDatabase,
+      onUpgrade: _upgradeDatabase,
+    );
   }
 
   Future<void> _createDatabase(Database db, int version) async {
     await db.execute('''
-      CREATE TABLE customers (
-        id INTEGER PRIMARY KEY,
-        name TEXT NOT NULL,
-        phone TEXT,
-        email TEXT,
-        address TEXT,
-        created_at TEXT,
-        updated_at TEXT
-      )
-    ''');
+    CREATE TABLE customers (
+      id INTEGER PRIMARY KEY,
+      name TEXT NOT NULL,
+      phone TEXT,
+      email TEXT,
+      address TEXT,
+      created_at TEXT,
+      updated_at TEXT
+    )
+  ''');
 
     await db.execute('''
-      CREATE TABLE locations (
-        id INTEGER PRIMARY KEY,
-        name TEXT NOT NULL,
-        address TEXT,
-        created_at TEXT,
-        updated_at TEXT
-      )
-    ''');
+    CREATE TABLE locations (
+      id INTEGER PRIMARY KEY,
+      name TEXT NOT NULL,
+      address TEXT,
+      created_at TEXT,
+      updated_at TEXT
+    )
+  ''');
 
     await db.execute('''
-      CREATE TABLE categories (
-        id INTEGER PRIMARY KEY,
-        name TEXT NOT NULL,
-        description TEXT,
-        created_at TEXT,
-        updated_at TEXT
-      )
-    ''');
+    CREATE TABLE categories (
+      id INTEGER PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT,
+      created_at TEXT,
+      updated_at TEXT
+    )
+  ''');
 
     await db.execute('''
-      CREATE TABLE captured_records (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        customer_id INTEGER NOT NULL,
-        location_id INTEGER NOT NULL,
-        category_id INTEGER NOT NULL,
-        description TEXT,
-        latitude REAL,
-        longitude REAL,
-        image_path TEXT,
-        captured_at TEXT NOT NULL,
-        sync_status TEXT NOT NULL DEFAULT 'Pending Sync',
-        server_id INTEGER,
-        created_at TEXT,
-        updated_at TEXT
-      )
-    ''');
-
-    await _seedInitialMasterData(db);
+    CREATE TABLE captured_records (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      customer_id INTEGER NOT NULL,
+      location_id INTEGER NOT NULL,
+      category_id INTEGER NOT NULL,
+      description TEXT,
+      latitude REAL,
+      longitude REAL,
+      image_path TEXT,
+      captured_at TEXT NOT NULL,
+      sync_status TEXT NOT NULL DEFAULT 'Pending Sync',
+      server_id INTEGER,
+      created_at TEXT,
+      updated_at TEXT
+    )
+  ''');
   }
 
-  Future<void> _seedInitialMasterData(Database db) async {
-    final now = DateTime.now().toIso8601String();
-
-    final batch = db.batch();
-
-    batch.insert('customers', {
-      'id': 1,
-      'name': 'ABC Traders',
-      'phone': '0771234567',
-      'email': 'abc@example.com',
-      'address': 'Colombo',
-      'created_at': now,
-      'updated_at': now,
-    });
-
-    batch.insert('customers', {
-      'id': 2,
-      'name': 'Green Field Supplies',
-      'phone': '0719876543',
-      'email': 'greenfield@example.com',
-      'address': 'Kandy',
-      'created_at': now,
-      'updated_at': now,
-    });
-
-    batch.insert('customers', {
-      'id': 3,
-      'name': 'Metro Retailers',
-      'phone': '0765554444',
-      'email': 'metro@example.com',
-      'address': 'Galle',
-      'created_at': now,
-      'updated_at': now,
-    });
-
-    batch.insert('locations', {
-      'id': 1,
-      'name': 'Colombo Warehouse',
-      'address': 'No. 10, Main Street, Colombo',
-      'created_at': now,
-      'updated_at': now,
-    });
-
-    batch.insert('locations', {
-      'id': 2,
-      'name': 'Kandy Branch',
-      'address': 'No. 25, Hill Road, Kandy',
-      'created_at': now,
-      'updated_at': now,
-    });
-
-    batch.insert('locations', {
-      'id': 3,
-      'name': 'Galle Distribution Center',
-      'address': 'No. 45, Fort Road, Galle',
-      'created_at': now,
-      'updated_at': now,
-    });
-
-    batch.insert('categories', {
-      'id': 1,
-      'name': 'Inspection',
-      'description': 'General field inspection record',
-      'created_at': now,
-      'updated_at': now,
-    });
-
-    batch.insert('categories', {
-      'id': 2,
-      'name': 'Delivery Check',
-      'description': 'Delivery verification and condition check',
-      'created_at': now,
-      'updated_at': now,
-    });
-
-    batch.insert('categories', {
-      'id': 3,
-      'name': 'Maintenance',
-      'description': 'Maintenance or repair related record',
-      'created_at': now,
-      'updated_at': now,
-    });
-
-    await batch.commit(noResult: true);
+  Future<void> _upgradeDatabase(
+    Database db,
+    int oldVersion,
+    int newVersion,
+  ) async {
+    if (oldVersion < 2) {
+      await db.delete('captured_records');
+      await db.delete('customers');
+      await db.delete('locations');
+      await db.delete('categories');
+    }
   }
 
   Future<List<MasterDataItem>> getCustomers() async {
@@ -393,6 +323,52 @@ class LocalDatabaseService {
     await batch.commit(noResult: true);
   }
 
+  Future<void> replaceMasterData({
+    required List<Map<String, dynamic>> customers,
+    required List<Map<String, dynamic>> locations,
+    required List<Map<String, dynamic>> categories,
+  }) async {
+    final db = await database;
+
+    await db.transaction((txn) async {
+      await txn.delete('customers');
+      await txn.delete('locations');
+      await txn.delete('categories');
+
+      for (final customer in customers) {
+        await txn.insert('customers', {
+          'id': customer['id'],
+          'name': customer['name'],
+          'phone': customer['phone'],
+          'email': customer['email'],
+          'address': customer['address'],
+          'created_at': customer['created_at'],
+          'updated_at': customer['updated_at'],
+        }, conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+
+      for (final location in locations) {
+        await txn.insert('locations', {
+          'id': location['id'],
+          'name': location['name'],
+          'address': location['address'],
+          'created_at': location['created_at'],
+          'updated_at': location['updated_at'],
+        }, conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+
+      for (final category in categories) {
+        await txn.insert('categories', {
+          'id': category['id'],
+          'name': category['name'],
+          'description': category['description'],
+          'created_at': category['created_at'],
+          'updated_at': category['updated_at'],
+        }, conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+    });
+  }
+
   Future<List<CapturedRecord>> getPendingSyncRecords() async {
     final db = await database;
 
@@ -449,5 +425,16 @@ class LocalDatabaseService {
       where: 'id = ?',
       whereArgs: [localId],
     );
+  }
+
+  Future<void> clearAllLocalData() async {
+    final db = await database;
+
+    await db.transaction((txn) async {
+      await txn.delete('captured_records');
+      await txn.delete('customers');
+      await txn.delete('locations');
+      await txn.delete('categories');
+    });
   }
 }

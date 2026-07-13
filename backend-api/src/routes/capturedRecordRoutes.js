@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
-const pool = require('../config/db');
+const prisma = require('../config/prisma');
 const {
   getSupabaseClient,
   isSupabaseStorageConfigured,
@@ -42,8 +42,23 @@ function isSupabaseStoragePath(storagePath) {
     isSupabaseStorageConfigured() &&
       storagePath &&
       !isHttpUrl(storagePath) &&
-      storagePath.startsWith('captured-records/')
+      (
+        storagePath.startsWith('captured-records/') ||
+        storagePath.startsWith('tenants/')
+      )
   );
+}
+
+function buildImageUrl(req, imageUrl) {
+  if (!imageUrl) {
+    return null;
+  }
+
+  if (isHttpUrl(imageUrl)) {
+    return imageUrl;
+  }
+
+  return `${req.protocol}://${req.get('host')}${imageUrl}`;
 }
 
 async function createSignedImageUrl(storagePath) {
@@ -77,18 +92,6 @@ async function resolveImageUrl(req, imageUrl, storagePath) {
   return buildImageUrl(req, imageUrl);
 }
 
-function buildImageUrl(req, imageUrl) {
-  if (!imageUrl) {
-    return null;
-  }
-
-if (isHttpUrl(imageUrl)) {
-  return imageUrl;
-}
-
-  return `${req.protocol}://${req.get('host')}${imageUrl}`;
-}
-
 function getUploadedImageFiles(req) {
   const multipleImages = req.files?.images || [];
   const legacyImage = req.files?.image || [];
@@ -96,13 +99,37 @@ function getUploadedImageFiles(req) {
   return [...multipleImages, ...legacyImage];
 }
 
-async function uploadImageFile(file) {
+function parsePositiveInteger(value) {
+  const parsedValue = Number(value);
+
+  if (!Number.isInteger(parsedValue) || parsedValue <= 0) {
+    return null;
+  }
+
+  return parsedValue;
+}
+
+function toOptionalDecimalValue(value) {
+  if (value === undefined || value === null || value === '') {
+    return null;
+  }
+
+  const numericValue = Number(value);
+
+  if (!Number.isFinite(numericValue)) {
+    return undefined;
+  }
+
+  return value.toString();
+}
+
+async function uploadImageFile(file, tenantId) {
   const extension = path.extname(file.originalname) || '.jpg';
   const fileName = `${Date.now()}-${crypto.randomUUID()}${extension}`;
 
   if (isSupabaseStorageConfigured()) {
     const supabase = getSupabaseClient();
-    const storagePath = `captured-records/${fileName}`;
+    const storagePath = `tenants/${tenantId}/captured-records/${fileName}`;
 
     const { error } = await supabase.storage
       .from(storageBucket)
@@ -131,6 +158,54 @@ async function uploadImageFile(file) {
   };
 }
 
+function formatCapturedRecord(record) {
+  return {
+    id: record.id,
+    tenant_id: record.tenant_id,
+    customer_id: record.customer_id,
+    location_id: record.location_id,
+    category_id: record.category_id,
+    customer_name: record.customers?.name || null,
+    location_name: record.locations?.name || null,
+    category_name: record.categories?.name || null,
+    description: record.description,
+    latitude: record.latitude,
+    longitude: record.longitude,
+    image_url: record.image_url,
+    image_path: record.image_path,
+    captured_at: record.captured_at,
+    received_at: record.received_at,
+    created_at: record.created_at,
+    updated_at: record.updated_at,
+  };
+}
+
+async function getCapturedRecordById(recordId, tenantId) {
+  return prisma.captured_records.findFirst({
+    where: {
+      id: recordId,
+      tenant_id: tenantId,
+    },
+    include: {
+      customers: {
+        select: {
+          name: true,
+        },
+      },
+      locations: {
+        select: {
+          name: true,
+        },
+      },
+      categories: {
+        select: {
+          name: true,
+        },
+      },
+    },
+  });
+}
+
 async function attachImagesToRecords(req, records) {
   if (records.length === 0) {
     return records;
@@ -138,25 +213,21 @@ async function attachImagesToRecords(req, records) {
 
   const recordIds = records.map((record) => record.id);
 
-  const imageResult = await pool.query(
-    `
-    SELECT
-      id,
-      captured_record_id,
-      image_url,
-      storage_path,
-      created_at
-    FROM captured_images
-    WHERE captured_record_id = ANY($1::int[])
-      AND tenant_id = $2
-    ORDER BY id ASC
-    `,
-    [recordIds, req.user.tenantId]
-  );
+  const images = await prisma.captured_images.findMany({
+    where: {
+      captured_record_id: {
+        in: recordIds,
+      },
+      tenant_id: req.user.tenantId,
+    },
+    orderBy: {
+      id: 'asc',
+    },
+  });
 
   const imagesByRecordId = new Map();
 
-  for (const image of imageResult.rows) {
+  for (const image of images) {
     const fullImageUrl = await resolveImageUrl(
       req,
       image.image_url,
@@ -178,10 +249,10 @@ async function attachImagesToRecords(req, records) {
 
   return Promise.all(
     records.map(async (record) => {
-      const images = imagesByRecordId.get(record.id) || [];
+      const recordImages = imagesByRecordId.get(record.id) || [];
 
       const fullImageUrl =
-        images[0]?.full_image_url ||
+        recordImages[0]?.full_image_url ||
         (await resolveImageUrl(req, record.image_url, record.image_path));
 
       return {
@@ -189,7 +260,7 @@ async function attachImagesToRecords(req, records) {
         image_url: isSupabaseStoragePath(record.image_path)
           ? null
           : record.image_url,
-        images,
+        images: recordImages,
         full_image_url: fullImageUrl,
       };
     })
@@ -198,40 +269,36 @@ async function attachImagesToRecords(req, records) {
 
 router.get('/', async (req, res) => {
   try {
-     const result = await pool.query(
-  `
-  SELECT
-    cr.id,
-    cr.customer_id,
-    cr.location_id,
-    cr.category_id,
-    c.name AS customer_name,
-    l.name AS location_name,
-    cat.name AS category_name,
-    cr.description,
-    cr.latitude,
-    cr.longitude,
-    cr.image_url,
-    cr.image_path,
-    cr.captured_at,
-    cr.received_at,
-    cr.created_at,
-    cr.updated_at
-  FROM captured_records cr
-  LEFT JOIN customers c ON c.id = cr.customer_id
-  LEFT JOIN locations l ON l.id = cr.location_id
-  LEFT JOIN categories cat ON cat.id = cr.category_id
-  WHERE cr.tenant_id = $1
-  ORDER BY cr.received_at DESC
-  `,
-  [req.user.tenantId]
-);
+    const records = await prisma.captured_records.findMany({
+      where: {
+        tenant_id: req.user.tenantId,
+      },
+      include: {
+        customers: {
+          select: {
+            name: true,
+          },
+        },
+        locations: {
+          select: {
+            name: true,
+          },
+        },
+        categories: {
+          select: {
+            name: true,
+          },
+        },
+      },
+      orderBy: {
+        received_at: 'desc',
+      },
+    });
 
-    
+    const formattedRecords = records.map(formatCapturedRecord);
+    const recordsWithImages = await attachImagesToRecords(req, formattedRecords);
 
-    const records = await attachImagesToRecords(req, result.rows);
-
-    res.json(records);
+    res.json(recordsWithImages);
   } catch (error) {
     res.status(500).json({
       message: 'Failed to fetch captured records',
@@ -242,47 +309,26 @@ router.get('/', async (req, res) => {
 
 router.get('/:id', async (req, res) => {
   try {
-    const { id } = req.params;
+    const recordId = parsePositiveInteger(req.params.id);
 
-    const result = await pool.query(
-      `
-      SELECT
-        cr.id,
-        cr.customer_id,
-        cr.location_id,
-        cr.category_id,
-        c.name AS customer_name,
-        l.name AS location_name,
-        cat.name AS category_name,
-        cr.description,
-        cr.latitude,
-        cr.longitude,
-        cr.image_url,
-        cr.image_path,
-        cr.captured_at,
-        cr.received_at,
-        cr.created_at,
-        cr.updated_at
-      FROM captured_records cr
-      LEFT JOIN customers c ON c.id = cr.customer_id
-      LEFT JOIN locations l ON l.id = cr.location_id
-      LEFT JOIN categories cat ON cat.id = cr.category_id
-      WHERE cr.id = $1
-        AND cr.tenant_id = $2
-      LIMIT 1
-      `,
-      [id, req.user.tenantId]
-    );
+    if (!recordId) {
+      return res.status(400).json({
+        message: 'Invalid captured record ID',
+      });
+    }
 
-    if (result.rows.length === 0) {
+    const record = await getCapturedRecordById(recordId, req.user.tenantId);
+
+    if (!record) {
       return res.status(404).json({
         message: 'Captured record not found',
       });
     }
 
-    const records = await attachImagesToRecords(req, [result.rows[0]]);
+    const formattedRecord = formatCapturedRecord(record);
+    const recordsWithImages = await attachImagesToRecords(req, [formattedRecord]);
 
-    res.json(records[0]);
+    res.json(recordsWithImages[0]);
   } catch (error) {
     res.status(500).json({
       message: 'Failed to fetch captured record',
@@ -298,8 +344,6 @@ router.post(
     { name: 'image', maxCount: 1 },
   ]),
   async (req, res) => {
-    const client = await pool.connect();
-
     try {
       const {
         customer_id,
@@ -311,38 +355,57 @@ router.post(
         captured_at,
       } = req.body;
 
-      if (!customer_id || !location_id || !category_id) {
+      const customerId = parsePositiveInteger(customer_id);
+      const locationId = parsePositiveInteger(location_id);
+      const categoryId = parsePositiveInteger(category_id);
+
+      if (!customerId || !locationId || !categoryId) {
         return res.status(400).json({
           message: 'Customer, location and category are required',
         });
       }
 
-      const referenceCheck = await pool.query(
-        `
-        SELECT
-          EXISTS (
-            SELECT 1 FROM customers
-            WHERE id = $1 AND tenant_id = $4
-          ) AS customer_exists,
-          EXISTS (
-            SELECT 1 FROM locations
-            WHERE id = $2 AND tenant_id = $4
-          ) AS location_exists,
-          EXISTS (
-            SELECT 1 FROM categories
-            WHERE id = $3 AND tenant_id = $4
-          ) AS category_exists
-        `,
-        [customer_id, location_id, category_id, req.user.tenantId]
-      );
+      const latitudeValue = toOptionalDecimalValue(latitude);
+      const longitudeValue = toOptionalDecimalValue(longitude);
 
-      const referenceStatus = referenceCheck.rows[0];
+      if (latitudeValue === undefined || longitudeValue === undefined) {
+        return res.status(400).json({
+          message: 'Latitude and longitude must be valid numbers',
+        });
+      }
 
-      if (
-        !referenceStatus.customer_exists ||
-        !referenceStatus.location_exists ||
-        !referenceStatus.category_exists
-      ) {
+      const capturedAtValue = captured_at
+        ? new Date(captured_at)
+        : new Date();
+
+      if (Number.isNaN(capturedAtValue.getTime())) {
+        return res.status(400).json({
+          message: 'Captured date/time is invalid',
+        });
+      }
+
+      const [customer, location, category] = await Promise.all([
+        prisma.customers.findFirst({
+          where: {
+            id: customerId,
+            tenant_id: req.user.tenantId,
+          },
+        }),
+        prisma.locations.findFirst({
+          where: {
+            id: locationId,
+            tenant_id: req.user.tenantId,
+          },
+        }),
+        prisma.categories.findFirst({
+          where: {
+            id: categoryId,
+            tenant_id: req.user.tenantId,
+          },
+        }),
+      ]);
+
+      if (!customer || !location || !category) {
         return res.status(400).json({
           message:
             'Selected customer, location, or category does not belong to your tenant',
@@ -350,11 +413,10 @@ router.post(
       }
 
       const uploadedFiles = getUploadedImageFiles(req);
-
       const uploadedImages = [];
 
       for (const file of uploadedFiles) {
-        const uploadedImage = await uploadImageFile(file);
+        const uploadedImage = await uploadImageFile(file, req.user.tenantId);
         uploadedImages.push(uploadedImage);
       }
 
@@ -364,73 +426,53 @@ router.post(
       const imageUrl = primaryImage ? primaryImage.imageUrl : null;
       const imagePath = primaryImage ? primaryImage.storagePath : null;
 
-      await client.query('BEGIN');
+      const capturedRecord = await prisma.$transaction(async (tx) => {
+        const record = await tx.captured_records.create({
+          data: {
+            tenant_id: req.user.tenantId,
+            customer_id: customerId,
+            location_id: locationId,
+            category_id: categoryId,
+            description: description || '',
+            latitude: latitudeValue,
+            longitude: longitudeValue,
+            image_url: imageUrl,
+            image_path: imagePath,
+            captured_at: capturedAtValue,
+          },
+        });
 
-      const recordResult = await client.query(
-        `
-      INSERT INTO captured_records (
-        tenant_id,
-        customer_id,
-        location_id,
-        category_id,
-        description,
-        latitude,
-        longitude,
-        image_url,
-        image_path,
-        captured_at
-      )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-        RETURNING *
-        `,
-      [
-        req.user.tenantId,
-        customer_id,
-        location_id,
-        category_id,
-        description || '',
-        latitude || null,
-        longitude || null,
-        imageUrl,
-        imagePath,
-        captured_at || new Date().toISOString(),
-      ]
+        if (uploadedImages.length > 0) {
+          await tx.captured_images.createMany({
+            data: uploadedImages.map((image) => ({
+              captured_record_id: record.id,
+              tenant_id: req.user.tenantId,
+              image_url: image.imageUrl,
+              storage_path: image.storagePath,
+            })),
+          });
+        }
+
+        return record;
+      });
+
+      const savedRecord = await getCapturedRecordById(
+        capturedRecord.id,
+        req.user.tenantId
       );
 
-      const capturedRecord = recordResult.rows[0];
-
-      for (const image of uploadedImages) {
-        await client.query(
-          `
-      INSERT INTO captured_images (
-        captured_record_id,
-        tenant_id,
-        image_url,
-        storage_path
-      )
-      VALUES ($1, $2, $3, $4)
-          `,
-      [capturedRecord.id, req.user.tenantId, image.imageUrl, image.storagePath]
-        );
-      }
-
-      await client.query('COMMIT');
-
-      const records = await attachImagesToRecords(req, [capturedRecord]);
+      const formattedRecord = formatCapturedRecord(savedRecord);
+      const recordsWithImages = await attachImagesToRecords(req, [formattedRecord]);
 
       res.status(201).json({
         message: 'Captured record created successfully',
-        record: records[0],
+        record: recordsWithImages[0],
       });
     } catch (error) {
-      await client.query('ROLLBACK');
-
       res.status(500).json({
         message: 'Failed to create captured record',
         error: error.message,
       });
-    } finally {
-      client.release();
     }
   }
 );

@@ -5,6 +5,8 @@ import 'package:http/http.dart' as http;
 
 import 'api_config.dart';
 
+import '../database/local_database_service.dart';
+
 class AuthResult {
   final bool isSuccess;
   final String message;
@@ -35,6 +37,8 @@ class AuthService {
   static Future<void> clearSession() async {
     await _secureStorage.delete(key: _tokenKey);
     await _secureStorage.delete(key: _userKey);
+
+    await LocalDatabaseService.instance.clearAllLocalData();
   }
 
   static Future<void> clearStoredToken() async {
