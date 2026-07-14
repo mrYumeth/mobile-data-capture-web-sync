@@ -1,5 +1,6 @@
 const express = require('express');
 const prisma = require('../config/prisma');
+const { runWithTenant } = require('../utils/tenantContext');
 
 const router = express.Router();
 
@@ -24,14 +25,19 @@ function isValidPhoneNumber(phone) {
 
 router.get('/', async (req, res) => {
   try {
-    const customers = await prisma.customers.findMany({
-      where: {
-        tenant_id: req.user.tenantId,
-      },
-      orderBy: {
-        id: 'desc',
-      },
-    });
+    const customers = await runWithTenant(
+      prisma,
+      req.user.tenantId,
+      (tx) =>
+        tx.customers.findMany({
+          where: {
+            tenant_id: req.user.tenantId,
+          },
+          orderBy: {
+            id: 'desc',
+          },
+        })
+    );
 
     res.json(customers);
   } catch (error) {

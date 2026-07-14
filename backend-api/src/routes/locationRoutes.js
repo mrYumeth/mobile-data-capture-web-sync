@@ -1,5 +1,6 @@
 const express = require('express');
 const prisma = require('../config/prisma');
+const { runWithTenant } = require('../utils/tenantContext');
 
 const router = express.Router();
 
@@ -16,15 +17,20 @@ function requireAdmin(req, res) {
 
 router.get('/', async (req, res) => {
   try {
-    const locations = await prisma.locations.findMany({
-      where: {
-        tenant_id: req.user.tenantId,
-        is_active: true,
-      },
-      orderBy: {
-        id: 'desc',
-      },
-    });
+    const locations = await runWithTenant(
+      prisma,
+      req.user.tenantId,
+      (tx) =>
+        tx.locations.findMany({
+          where: {
+            tenant_id: req.user.tenantId,
+            is_active: true,
+          },
+          orderBy: {
+            id: 'desc',
+          },
+        })
+    );
 
     res.json(locations);
   } catch (error) {
@@ -49,13 +55,18 @@ router.post('/', async (req, res) => {
       });
     }
 
-    const location = await prisma.locations.create({
-      data: {
-        tenant_id: req.user.tenantId,
-        name: name.trim(),
-        address: address || null,
-      },
-    });
+    const location = await runWithTenant(
+      prisma,
+      req.user.tenantId,
+      (tx) =>
+        tx.locations.create({
+          data: {
+            tenant_id: req.user.tenantId,
+            name: name.trim(),
+            address: address || null,
+          },
+        })
+    );
 
     res.status(201).json(location);
   } catch (error) {
@@ -88,29 +99,39 @@ router.put('/:id', async (req, res) => {
       });
     }
 
-    const existingLocation = await prisma.locations.findFirst({
-      where: {
-        id: locationId,
-        tenant_id: req.user.tenantId,
-      },
-    });
+    const updatedLocation = await runWithTenant(
+      prisma,
+      req.user.tenantId,
+      async (tx) => {
+        const existingLocation = await tx.locations.findFirst({
+          where: {
+            id: locationId,
+            tenant_id: req.user.tenantId,
+          },
+        });
 
-    if (!existingLocation) {
+        if (!existingLocation) {
+          return null;
+        }
+
+        return tx.locations.update({
+          where: {
+            id: locationId,
+          },
+          data: {
+            name: name.trim(),
+            address: address || null,
+            updated_at: new Date(),
+          },
+        });
+      }
+    );
+
+    if (!updatedLocation) {
       return res.status(404).json({
         message: 'Location not found',
       });
     }
-
-    const updatedLocation = await prisma.locations.update({
-      where: {
-        id: locationId,
-      },
-      data: {
-        name: name.trim(),
-        address: address || null,
-        updated_at: new Date(),
-      },
-    });
 
     res.json(updatedLocation);
   } catch (error) {
@@ -136,24 +157,34 @@ router.delete('/:id', async (req, res) => {
       });
     }
 
-    const existingLocation = await prisma.locations.findFirst({
-      where: {
-        id: locationId,
-        tenant_id: req.user.tenantId,
-      },
-    });
+    const deletedLocation = await runWithTenant(
+      prisma,
+      req.user.tenantId,
+      async (tx) => {
+        const existingLocation = await tx.locations.findFirst({
+          where: {
+            id: locationId,
+            tenant_id: req.user.tenantId,
+          },
+        });
 
-    if (!existingLocation) {
+        if (!existingLocation) {
+          return null;
+        }
+
+        return tx.locations.delete({
+          where: {
+            id: locationId,
+          },
+        });
+      }
+    );
+
+    if (!deletedLocation) {
       return res.status(404).json({
         message: 'Location not found',
       });
     }
-
-    const deletedLocation = await prisma.locations.delete({
-      where: {
-        id: locationId,
-      },
-    });
 
     res.json({
       message: 'Location deleted successfully',

@@ -1,5 +1,6 @@
 const express = require('express');
 const prisma = require('../config/prisma');
+const { runWithTenant } = require('../utils/tenantContext');
 
 const router = express.Router();
 
@@ -16,15 +17,20 @@ function requireAdmin(req, res) {
 
 router.get('/', async (req, res) => {
   try {
-    const categories = await prisma.categories.findMany({
-      where: {
-        tenant_id: req.user.tenantId,
-        is_active: true,
-      },
-      orderBy: {
-        id: 'desc',
-      },
-    });
+    const categories = await runWithTenant(
+      prisma,
+      req.user.tenantId,
+      (tx) =>
+        tx.categories.findMany({
+          where: {
+            tenant_id: req.user.tenantId,
+            is_active: true,
+          },
+          orderBy: {
+            id: 'desc',
+          },
+        })
+    );
 
     res.json(categories);
   } catch (error) {
@@ -49,13 +55,18 @@ router.post('/', async (req, res) => {
       });
     }
 
-    const category = await prisma.categories.create({
-      data: {
-        tenant_id: req.user.tenantId,
-        name: name.trim(),
-        description: description || null,
-      },
-    });
+    const category = await runWithTenant(
+      prisma,
+      req.user.tenantId,
+      (tx) =>
+        tx.categories.create({
+          data: {
+            tenant_id: req.user.tenantId,
+            name: name.trim(),
+            description: description || null,
+          },
+        })
+    );
 
     res.status(201).json(category);
   } catch (error) {
@@ -88,29 +99,39 @@ router.put('/:id', async (req, res) => {
       });
     }
 
-    const existingCategory = await prisma.categories.findFirst({
-      where: {
-        id: categoryId,
-        tenant_id: req.user.tenantId,
-      },
-    });
+    const updatedCategory = await runWithTenant(
+      prisma,
+      req.user.tenantId,
+      async (tx) => {
+        const existingCategory = await tx.categories.findFirst({
+          where: {
+            id: categoryId,
+            tenant_id: req.user.tenantId,
+          },
+        });
 
-    if (!existingCategory) {
+        if (!existingCategory) {
+          return null;
+        }
+
+        return tx.categories.update({
+          where: {
+            id: categoryId,
+          },
+          data: {
+            name: name.trim(),
+            description: description || null,
+            updated_at: new Date(),
+          },
+        });
+      }
+    );
+
+    if (!updatedCategory) {
       return res.status(404).json({
         message: 'Category not found',
       });
     }
-
-    const updatedCategory = await prisma.categories.update({
-      where: {
-        id: categoryId,
-      },
-      data: {
-        name: name.trim(),
-        description: description || null,
-        updated_at: new Date(),
-      },
-    });
 
     res.json(updatedCategory);
   } catch (error) {
@@ -136,24 +157,34 @@ router.delete('/:id', async (req, res) => {
       });
     }
 
-    const existingCategory = await prisma.categories.findFirst({
-      where: {
-        id: categoryId,
-        tenant_id: req.user.tenantId,
-      },
-    });
+    const deletedCategory = await runWithTenant(
+      prisma,
+      req.user.tenantId,
+      async (tx) => {
+        const existingCategory = await tx.categories.findFirst({
+          where: {
+            id: categoryId,
+            tenant_id: req.user.tenantId,
+          },
+        });
 
-    if (!existingCategory) {
+        if (!existingCategory) {
+          return null;
+        }
+
+        return tx.categories.delete({
+          where: {
+            id: categoryId,
+          },
+        });
+      }
+    );
+
+    if (!deletedCategory) {
       return res.status(404).json({
         message: 'Category not found',
       });
     }
-
-    const deletedCategory = await prisma.categories.delete({
-      where: {
-        id: categoryId,
-      },
-    });
 
     res.json({
       message: 'Category deleted successfully',
