@@ -1,10 +1,43 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { authApi } from '../services/api'
+import {
+  getKeycloakToken,
+  initKeycloak,
+  loginWithKeycloak,
+} from '../services/keycloakService'
 
 function LoginPage({ onLogin, onShowRegister, theme, toggleTheme }) {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+
+useEffect(() => {
+  async function completeKeycloakLogin() {
+    try {
+      const isAuthenticated = await initKeycloak()
+
+      if (!isAuthenticated) {
+        return
+      }
+
+      const token = getKeycloakToken()
+
+      if (!token) {
+        return
+      }
+
+      localStorage.setItem('fieldsync-auth-token', token)
+      localStorage.setItem('fieldsync-admin-auth', 'true')
+
+      const user = await authApi.me()
+      onLogin(user.user)
+    } catch (error) {
+      setError(error.message || 'Keycloak login failed.')
+    }
+  }
+
+  completeKeycloakLogin()
+}, [onLogin])
 
 async function handleSubmit(event) {
   event.preventDefault()
@@ -136,6 +169,13 @@ async function handleSubmit(event) {
 
             <button type="submit" className="primary-button w-full">
               Login to Dashboard
+            </button>
+            <button
+              type="button"
+              onClick={() => loginWithKeycloak()}
+              className="primary-button w-full"
+            >
+              Login with Keycloak
             </button>
           </form>
           <div className="mt-6 rounded-2xl bg-white p-4 text-sm text-gray-600">

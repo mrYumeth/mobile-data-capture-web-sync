@@ -17,6 +17,8 @@ const categoryRoutes = require('./src/routes/categoryRoutes');
 const capturedRecordRoutes = require('./src/routes/capturedRecordRoutes');
 const dnsPromises = dns.promises;
 
+const { verifyKeycloakToken } = require('./src/services/keycloakAuthService');
+
 const app = express();
 
 const allowedOrigins = (process.env.CORS_ORIGIN || '')
@@ -107,7 +109,100 @@ function isClientAllowed(user, clientType) {
   return Boolean(user.access_web);
 }
 
-function authenticateToken(req, res, next) {
+async function findUserByKeycloakPayload(payload) {
+  const keycloakUserId = payload.sub;
+  const email = payload.email ? payload.email.toLowerCase() : null;
+
+  let result = await pool.query(
+    `
+    SELECT
+      id,
+      tenant_id,
+      username,
+      email,
+      full_name,
+      role,
+      access_web,
+      access_mobile,
+      password_change_required,
+      is_active,
+      keycloak_user_id
+    FROM users
+    WHERE keycloak_user_id = $1
+    LIMIT 1
+    `,
+    [keycloakUserId]
+  );
+
+  if (result.rows.length > 0) {
+    return result.rows[0];
+  }
+
+  if (!email) {
+    return null;
+  }
+
+  result = await pool.query(
+    `
+    SELECT
+      id,
+      tenant_id,
+      username,
+      email,
+      full_name,
+      role,
+      access_web,
+      access_mobile,
+      password_change_required,
+      is_active,
+      keycloak_user_id
+    FROM users
+    WHERE LOWER(email) = LOWER($1)
+    LIMIT 1
+    `,
+    [email]
+  );
+
+  if (result.rows.length === 0) {
+    return null;
+  }
+
+  const user = result.rows[0];
+
+  if (user.keycloak_user_id && user.keycloak_user_id !== keycloakUserId) {
+    throw new Error('Email is already linked to another Keycloak account');
+  }
+
+  if (!user.keycloak_user_id) {
+    const updateResult = await pool.query(
+      `
+      UPDATE users
+      SET keycloak_user_id = $1,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = $2
+      RETURNING
+        id,
+        tenant_id,
+        username,
+        email,
+        full_name,
+        role,
+        access_web,
+        access_mobile,
+        password_change_required,
+        is_active,
+        keycloak_user_id
+      `,
+      [keycloakUserId, user.id]
+    );
+
+    return updateResult.rows[0];
+  }
+
+  return user;
+}
+
+async function authenticateToken(req, res, next) {
   const authHeader = req.headers.authorization || '';
   const token = authHeader.startsWith('Bearer ')
     ? authHeader.slice('Bearer '.length)
@@ -120,11 +215,35 @@ function authenticateToken(req, res, next) {
   }
 
   try {
+    if (process.env.AUTH_PROVIDER === 'keycloak') {
+      const keycloakPayload = await verifyKeycloakToken(token);
+      const user = await findUserByKeycloakPayload(keycloakPayload);
+
+      if (!user || !user.is_active) {
+        return res.status(403).json({
+          message: 'Your Keycloak account is not linked to an active FieldSync user',
+        });
+      }
+
+      const clientType =
+        keycloakPayload.azp === 'fieldsync-mobile' ? 'mobile' : 'web';
+
+      if (!isClientAllowed(user, clientType)) {
+        return res.status(403).json({
+          message: `Your account is not allowed to access the ${clientType} application`,
+        });
+      }
+
+      req.user = buildUserPayload(user, clientType);
+      return next();
+    }
+
     req.user = jwt.verify(token, getJwtSecret());
-    next();
+    return next();
   } catch (error) {
     return res.status(401).json({
       message: 'Invalid or expired authentication token',
+      error: error.message,
     });
   }
 }
