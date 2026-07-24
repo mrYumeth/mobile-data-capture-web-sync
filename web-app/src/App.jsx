@@ -9,6 +9,7 @@ import UserManagementPage from './pages/UserManagementPage'
 import SetupPasswordPage from './pages/SetupPasswordPage'
 import ChangePasswordPage from './pages/ChangePasswordPage'
 import RegisterTenantPage from './pages/RegisterTenantPage'
+import { logoutFromKeycloak } from './services/keycloakService'
 
 const AUTH_TOKEN_KEY = 'fieldsync-auth-token'
 const AUTH_STATE_KEY = 'fieldsync-admin-auth'
@@ -141,15 +142,19 @@ function App() {
     setIsAuthenticated(true)
   }
 
-  function handleLogout() {
-    localStorage.removeItem(AUTH_TOKEN_KEY)
-    localStorage.removeItem(AUTH_STATE_KEY)
-    localStorage.removeItem(AUTH_USER_KEY)
+function handleLogout() {
+  localStorage.removeItem(AUTH_TOKEN_KEY)
+  localStorage.removeItem(AUTH_STATE_KEY)
+  localStorage.removeItem(AUTH_USER_KEY)
 
-    setCurrentUser(null)
-    setIsAuthenticated(false)
-    setActivePage('dashboard')
+  setCurrentUser(null)
+  setIsAuthenticated(false)
+  setActivePage('dashboard')
+
+  if (import.meta.env.VITE_AUTH_PROVIDER === 'keycloak') {
+    logoutFromKeycloak().catch(() => {})
   }
+}
 
   if (setupToken) {
   return (

@@ -1,10 +1,21 @@
+import { refreshKeycloakToken } from './keycloakService'
+
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'
 
 const AUTH_TOKEN_KEY = 'fieldsync-auth-token'
 const AUTH_STATE_KEY = 'fieldsync-admin-auth'
 
-function getAuthToken() {
+async function getAuthToken() {
+  if (import.meta.env.VITE_AUTH_PROVIDER === 'keycloak') {
+    const refreshedToken = await refreshKeycloakToken()
+
+    if (refreshedToken) {
+      localStorage.setItem(AUTH_TOKEN_KEY, refreshedToken)
+      return refreshedToken
+    }
+  }
+
   return localStorage.getItem(AUTH_TOKEN_KEY)
 }
 
@@ -14,7 +25,7 @@ function clearAuthState() {
 }
 
 async function request(path, options = {}) {
-  const token = getAuthToken()
+const token = await getAuthToken()
 
   const headers = {
     ...(options.body ? { 'Content-Type': 'application/json' } : {}),
