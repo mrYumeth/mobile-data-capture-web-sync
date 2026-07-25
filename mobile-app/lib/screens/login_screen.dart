@@ -59,6 +59,30 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Future<void> _loginWithKeycloak() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    final result = await _authService.loginWithKeycloak();
+
+    if (!mounted) return;
+
+    setState(() {
+      _isLoading = false;
+    });
+
+    if (result.isSuccess) {
+      Navigator.of(
+        context,
+      ).pushReplacement(MaterialPageRoute(builder: (_) => const HomeScreen()));
+    } else {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(result.message)));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
@@ -221,6 +245,12 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                                 )
                               : const Text('Login to App'),
+                        ),
+                        const SizedBox(height: 12),
+                        OutlinedButton.icon(
+                          onPressed: _isLoading ? null : _loginWithKeycloak,
+                          icon: const Icon(Icons.security_outlined),
+                          label: const Text('Login with Keycloak'),
                         ),
                         const SizedBox(height: 12),
                         Container(

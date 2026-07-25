@@ -7,6 +7,8 @@ import 'api_config.dart';
 
 import '../database/local_database_service.dart';
 
+import 'keycloak_mobile_service.dart';
+
 class AuthResult {
   final bool isSuccess;
   final String message;
@@ -19,6 +21,7 @@ class AuthService {
 
   static const String _tokenKey = 'fieldsync_auth_token';
   static const String _userKey = 'fieldsync_auth_user';
+  static const String _refreshTokenKey = 'fieldsync_refresh_token';
 
   static Future<String?> getStoredToken() async {
     return _secureStorage.read(key: _tokenKey);
@@ -37,6 +40,7 @@ class AuthService {
   static Future<void> clearSession() async {
     await _secureStorage.delete(key: _tokenKey);
     await _secureStorage.delete(key: _userKey);
+    await _secureStorage.delete(key: _refreshTokenKey);
 
     await LocalDatabaseService.instance.clearAllLocalData();
   }
@@ -169,5 +173,56 @@ class AuthService {
 
     await _secureStorage.write(key: _tokenKey, value: token);
     await _secureStorage.write(key: _userKey, value: jsonEncode(user));
+  }
+
+  Future<AuthResult> loginWithKeycloak() async {
+    try {
+      final tokenResponse = await KeycloakMobileService().login();
+
+      final accessToken = tokenResponse?.accessToken;
+      final refreshToken = tokenResponse?.refreshToken;
+
+      if (accessToken == null || accessToken.isEmpty) {
+        return const AuthResult(
+          isSuccess: false,
+          message: 'Keycloak login failed. No access token received.',
+        );
+      }
+
+      final uri = Uri.parse('${ApiConfig.baseUrl}/api/auth/me');
+
+      final response = await http
+          .get(uri, headers: {'Authorization': 'Bearer $accessToken'})
+          .timeout(const Duration(seconds: 90));
+
+      final decodedData = _decodeResponse(response.body);
+
+      if (response.statusCode != 200) {
+        return AuthResult(
+          isSuccess: false,
+          message:
+              decodedData['message']?.toString() ??
+              'Keycloak account is not linked to FieldSync.',
+        );
+      }
+
+      await _secureStorage.write(key: _tokenKey, value: accessToken);
+
+      if (refreshToken != null && refreshToken.isNotEmpty) {
+        await _secureStorage.write(key: _refreshTokenKey, value: refreshToken);
+      }
+
+      await _secureStorage.write(
+        key: _userKey,
+        value: jsonEncode(decodedData['user']),
+      );
+
+      return const AuthResult(isSuccess: true, message: 'Login successful');
+    } catch (error) {
+      return AuthResult(
+        isSuccess: false,
+        message: 'Keycloak login failed. Please try again.',
+      );
+    }
   }
 }
