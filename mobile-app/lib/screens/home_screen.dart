@@ -8,11 +8,49 @@ import 'login_screen.dart';
 import 'master_data_screen.dart';
 import 'sync_status_screen.dart';
 import 'change_password_screen.dart';
+import '../database/local_database_service.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   Future<void> _logout(BuildContext context) async {
+    final syncCounts = await LocalDatabaseService.instance
+        .getSyncStatusCounts();
+
+    final pendingCount = syncCounts['pending'] ?? 0;
+    final failedCount = syncCounts['failed'] ?? 0;
+    final unsyncedCount = pendingCount + failedCount;
+
+    if (!context.mounted) return;
+
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Logout?'),
+          content: Text(
+            unsyncedCount > 0
+                ? 'You have $unsyncedCount unsynced local record(s). They will remain saved on this device after logout, but you should log back in with the same account to sync them later.'
+                : 'Are you sure you want to logout?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Logout'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldLogout != true) {
+      return;
+    }
+
     await AuthService.clearSession();
 
     if (!context.mounted) return;
