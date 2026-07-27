@@ -190,67 +190,41 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                         ),
                         const SizedBox(height: 28),
-                        TextFormField(
-                          controller: _usernameController,
-                          decoration: const InputDecoration(
-                            labelText: 'Username',
-                            prefixIcon: Icon(Icons.person_outline),
-                          ),
-                          textInputAction: TextInputAction.next,
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'Username is required';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 16),
-                        TextFormField(
-                          controller: _passwordController,
-                          obscureText: _obscurePassword,
-                          decoration: InputDecoration(
-                            labelText: 'Password',
-                            prefixIcon: const Icon(Icons.lock_outline),
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                _obscurePassword
-                                    ? Icons.visibility_outlined
-                                    : Icons.visibility_off_outlined,
-                              ),
-                              onPressed: () {
-                                setState(() {
-                                  _obscurePassword = !_obscurePassword;
-                                });
-                              },
-                            ),
-                          ),
-                          onFieldSubmitted: (_) => _login(),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Password is required';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 24),
-                        FilledButton(
-                          onPressed: _isLoading ? null : _login,
-                          child: _isLoading
+                        FilledButton.icon(
+                          onPressed: _isLoading ? null : _loginWithKeycloak,
+                          icon: _isLoading
                               ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
+                                  height: 18,
+                                  width: 18,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
                                     color: Colors.white,
                                   ),
                                 )
-                              : const Text('Login to App'),
+                              : const Icon(Icons.security_outlined),
+                          label: Text(_isLoading ? 'Signing in...' : 'Login'),
                         ),
+
                         const SizedBox(height: 12),
-                        OutlinedButton.icon(
-                          onPressed: _isLoading ? null : _loginWithKeycloak,
-                          icon: const Icon(Icons.security_outlined),
-                          label: const Text('Login with Keycloak'),
+
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: isDarkMode
+                                ? Colors.white.withValues(alpha: 0.08)
+                                : AppTheme.lightSurface,
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                          child: Text(
+                            'You will be redirected to the FieldSync IAM login page. Use the account provided by your administrator.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: isDarkMode
+                                  ? Colors.white.withValues(alpha: 0.72)
+                                  : AppTheme.mutedText,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ),
                         const SizedBox(height: 12),
                         Container(
