@@ -11,6 +11,8 @@ function LoginPage({ onLogin, onShowRegister, theme, toggleTheme }) {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
 
+  const isKeycloakAuth = import.meta.env.VITE_AUTH_PROVIDER === 'keycloak'
+
 useEffect(() => {
   async function completeKeycloakLogin() {
     try {
@@ -138,6 +140,21 @@ async function handleSubmit(event) {
             </div>
           )}
 
+        {isKeycloakAuth ? (
+          <div className="mt-8 space-y-5">
+            <button
+              type="button"
+              onClick={() => loginWithKeycloak()}
+              className="primary-button w-full"
+            >
+              Login 
+            </button>
+
+            <p className="text-center text-sm text-gray-500">
+              You will be redirected to the FieldSync IAM login page.
+            </p>
+          </div>
+        ) : (
           <form onSubmit={handleSubmit} className="mt-8 space-y-5">
             <div>
               <label className="mb-2 block text-sm font-semibold text-gray-700">
@@ -170,14 +187,8 @@ async function handleSubmit(event) {
             <button type="submit" className="primary-button w-full">
               Login to Dashboard
             </button>
-            <button
-              type="button"
-              onClick={() => loginWithKeycloak()}
-              className="primary-button w-full"
-            >
-              Login with Keycloak
-            </button>
           </form>
+        )}
           <div className="mt-6 rounded-2xl bg-white p-4 text-sm text-gray-600">
             <p className="font-semibold text-gray-800">Secure access only</p>
             <p className="mt-1">
