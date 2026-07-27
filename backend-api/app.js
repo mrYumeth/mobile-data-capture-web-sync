@@ -1068,13 +1068,13 @@ app.patch('/api/admin/users/:id', authenticateToken, requireAdmin, async (req, r
       [id, req.user.tenantId]
     );
 
-    const existingUserRow = existingUser.rows[0];
-
     if (existingUser.rows.length === 0) {
       return res.status(404).json({
         message: 'User not found',
       });
     }
+
+    const existingUserRow = existingUser.rows[0];
 
     if (existingUserRow.role === 'admin') {
       return res.status(400).json({
@@ -1132,6 +1132,7 @@ app.patch('/api/admin/users/:id', authenticateToken, requireAdmin, async (req, r
         is_active,
         confirmed_at,
         password_change_required,
+        keycloak_user_id,
         created_at
       `,
       [
@@ -1148,6 +1149,18 @@ app.patch('/api/admin/users/:id', authenticateToken, requireAdmin, async (req, r
     if (result.rows.length === 0) {
       return res.status(404).json({
         message: 'User not found',
+      });
+    }
+
+    const updatedUser = result.rows[0];
+
+    if (isKeycloakAuthEnabled() && existingUserRow.keycloak_user_id) {
+      await updateKeycloakUser(existingUserRow.keycloak_user_id, {
+        fullName: updatedUser.full_name,
+        email: updatedUser.email,
+        accessWeb: updatedUser.access_web,
+        accessMobile: updatedUser.access_mobile,
+        isActive: updatedUser.is_active,
       });
     }
 
