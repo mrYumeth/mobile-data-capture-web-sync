@@ -156,7 +156,7 @@ function handleCancelEdit() {
         </p>
         <h2 className="mt-2 text-3xl font-extrabold">Users</h2>
         <p className="mt-2 text-gray-500">
-          Create users and assign web or mobile app access, and change password.
+            Create FieldSync user profiles and assign web or mobile app access. Passwords are managed through Keycloak.
         </p>
       </div>
         <div className="mb-6 flex flex-wrap gap-3">

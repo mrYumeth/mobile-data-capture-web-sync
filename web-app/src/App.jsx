@@ -61,6 +61,8 @@ function App() {
     return Boolean(localStorage.getItem(AUTH_TOKEN_KEY))
   })
 
+  const isKeycloakAuth = import.meta.env.VITE_AUTH_PROVIDER === 'keycloak'
+
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
     localStorage.setItem('fieldsync-theme', theme)
@@ -156,7 +158,7 @@ function handleLogout() {
   }
 }
 
-  if (setupToken) {
+  if (setupToken && !isKeycloakAuth) {
   return (
     <SetupPasswordPage
       setupToken={setupToken}
@@ -247,6 +249,10 @@ if (!isAuthenticated) {
                     }
 
                     if (item.userOnly && currentUser?.role === 'admin') {
+                      return false
+                    }
+
+                    if (item.key === 'account' && isKeycloakAuth) {
                       return false
                     }
 

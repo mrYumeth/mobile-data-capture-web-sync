@@ -661,6 +661,11 @@ app.post('/api/auth/register-tenant', async (req, res) => {
  * User opens setup link from email and sets their own password.
  */
 app.post('/api/auth/setup-password', async (req, res) => {
+  if (isKeycloakAuthEnabled()) {
+  return res.status(410).json({
+    message: 'Password setup is disabled. Passwords are managed by Keycloak.',
+  });
+}
   try {
     const { token, password } = req.body;
 
@@ -727,6 +732,11 @@ app.post('/api/auth/setup-password', async (req, res) => {
  * Any logged-in user can change their password.
  */
     app.post('/api/auth/change-password', authenticateToken, async (req, res) => {
+      if (isKeycloakAuthEnabled()) {
+  return res.status(410).json({
+    message: 'Password change is disabled. Please change your password through Keycloak.',
+  });
+}
       try {
         const { currentPassword, newPassword } = req.body;
 
