@@ -25,6 +25,8 @@ const {
   shouldCreateTemporaryPassword,
   generateTemporaryPassword,
   setKeycloakTemporaryPassword,
+  updateKeycloakUser,
+  deleteKeycloakUser,
 } = require('./src/services/keycloakAdminService');
 
 const app = express();
@@ -724,7 +726,7 @@ app.post('/api/auth/setup-password', async (req, res) => {
 
     res.json({
       message: 'Password set successfully. You can now login.',
-      user: result.rows[0],
+      user: updatedUser,
     });
   } catch (error) {
     res.status(500).json({
@@ -891,6 +893,8 @@ app.post('/api/admin/users', authenticateToken, requireAdmin, async (req, res) =
       [normalizedUsername, normalizedEmail]
     );
 
+    const existingUserRow = existingUser.rows[0];
+
     if (existingUser.rows.length > 0) {
       return res.status(409).json({
         message: 'Username or email is already registered',
@@ -1055,7 +1059,7 @@ app.patch('/api/admin/users/:id', authenticateToken, requireAdmin, async (req, r
 
     const existingUser = await pool.query(
       `
-      SELECT id, role
+      SELECT id, role, keycloak_user_id, access_web, access_mobile, is_active
       FROM users
       WHERE id = $1
         AND tenant_id = $2
@@ -1064,13 +1068,15 @@ app.patch('/api/admin/users/:id', authenticateToken, requireAdmin, async (req, r
       [id, req.user.tenantId]
     );
 
+    const existingUserRow = existingUser.rows[0];
+
     if (existingUser.rows.length === 0) {
       return res.status(404).json({
         message: 'User not found',
       });
     }
 
-    if (existingUser.rows[0].role === 'admin') {
+    if (existingUserRow.role === 'admin') {
       return res.status(400).json({
         message: 'Admin account details cannot be edited from user management',
       });
@@ -1147,7 +1153,7 @@ app.patch('/api/admin/users/:id', authenticateToken, requireAdmin, async (req, r
 
     res.json({
       message: 'User updated successfully',
-      user: result.rows[0],
+      user: updatedUser,
     });
   } catch (error) {
     res.status(500).json({
@@ -1170,7 +1176,7 @@ app.delete('/api/admin/users/:id', authenticateToken, requireAdmin, async (req, 
 
     const existingUser = await pool.query(
       `
-      SELECT id, role
+      SELECT id, role, keycloak_user_id
       FROM users
       WHERE id = $1
         AND tenant_id = $2
@@ -1179,13 +1185,15 @@ app.delete('/api/admin/users/:id', authenticateToken, requireAdmin, async (req, 
       [id, req.user.tenantId]
     );
 
+    const existingUserRow = existingUser.rows[0];
+
     if (existingUser.rows.length === 0) {
       return res.status(404).json({
         message: 'User not found',
       });
     }
 
-    if (existingUser.rows[0].role === 'admin') {
+    if (existingUserRow.role === 'admin') {
       return res.status(400).json({
         message: 'Admin accounts cannot be deleted from user management',
       });
@@ -1207,9 +1215,25 @@ app.delete('/api/admin/users/:id', authenticateToken, requireAdmin, async (req, 
       [id, req.user.tenantId]
     );
 
+    const updatedUser = result.rows[0];
+
+    if (isKeycloakAuthEnabled() && existingUserRow.keycloak_user_id) {
+      await updateKeycloakUser(existingUserRow.keycloak_user_id, {
+        fullName: updatedUser.full_name,
+        email: updatedUser.email,
+        accessWeb: updatedUser.access_web,
+        accessMobile: updatedUser.access_mobile,
+        isActive: updatedUser.is_active,
+      });
+    }
+
+        if (isKeycloakAuthEnabled() && existingUser.rows[0].keycloak_user_id) {
+      await deleteKeycloakUser(existingUser.rows[0].keycloak_user_id);
+    }
+
     res.json({
       message: 'User permanently deleted successfully',
-      user: result.rows[0],
+      user: updatedUser,
     });
   } catch (error) {
     res.status(500).json({
@@ -1232,6 +1256,31 @@ app.patch('/api/admin/users/:id/access', authenticateToken, requireAdmin, async 
         message: 'You cannot deactivate your own admin account',
       });
     }
+
+          const existingUser = await pool.query(
+        `
+        SELECT id, role, keycloak_user_id
+        FROM users
+        WHERE id = $1
+          AND tenant_id = $2
+        LIMIT 1
+        `,
+        [id, req.user.tenantId]
+      );
+
+      if (existingUser.rows.length === 0) {
+        return res.status(404).json({
+          message: 'User not found',
+        });
+      }
+
+      const existingUserRow = existingUser.rows[0];
+
+      if (existingUserRow.role === 'admin') {
+        return res.status(400).json({
+          message: 'Admin account access cannot be edited from user management',
+        });
+      }
 
     const result = await pool.query(
       `
@@ -1266,9 +1315,21 @@ app.patch('/api/admin/users/:id/access', authenticateToken, requireAdmin, async 
       });
     }
 
+        const updatedUser = result.rows[0];
+
+    if (isKeycloakAuthEnabled() && existingUserRow.keycloak_user_id) {
+      await updateKeycloakUser(existingUserRow.keycloak_user_id, {
+        fullName: updatedUser.full_name,
+        email: updatedUser.email,
+        accessWeb: updatedUser.access_web,
+        accessMobile: updatedUser.access_mobile,
+        isActive: updatedUser.is_active,
+      });
+    }
+
     res.json({
       message: 'User access updated successfully',
-      user: result.rows[0],
+      user: updatedUser,
     });
   } catch (error) {
     res.status(500).json({

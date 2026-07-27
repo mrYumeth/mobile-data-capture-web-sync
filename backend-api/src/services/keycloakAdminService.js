@@ -211,6 +211,98 @@ async function setKeycloakTemporaryPassword(keycloakUserId, temporaryPassword) {
   return true;
 }
 
+async function updateKeycloakUser(keycloakUserId, {
+  fullName,
+  email,
+  accessWeb,
+  accessMobile,
+  isActive,
+}) {
+  if (!isKeycloakAdminConfigured()) {
+    throw new Error('Keycloak Admin API is not configured');
+  }
+
+  if (!keycloakUserId) {
+    return false;
+  }
+
+  const baseUrl = getBaseUrl();
+  const realm = getRealm();
+  const token = await getAdminAccessToken();
+
+  const updatePayload = {};
+
+  if (fullName) {
+    const { firstName, lastName } = splitFullName(fullName);
+    updatePayload.firstName = firstName;
+    updatePayload.lastName = lastName;
+  }
+
+  if (email) {
+    updatePayload.email = email;
+    updatePayload.emailVerified = true;
+  }
+
+  if (typeof isActive === 'boolean') {
+    updatePayload.enabled = isActive;
+  }
+
+  updatePayload.attributes = {
+    fieldsync_access_web: [String(Boolean(accessWeb))],
+    fieldsync_access_mobile: [String(Boolean(accessMobile))],
+  };
+
+  const response = await fetch(
+    `${baseUrl}/admin/realms/${realm}/users/${keycloakUserId}`,
+    {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(updatePayload),
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to update Keycloak user: ${errorText}`);
+  }
+
+  return true;
+}
+
+async function deleteKeycloakUser(keycloakUserId) {
+  if (!isKeycloakAdminConfigured()) {
+    throw new Error('Keycloak Admin API is not configured');
+  }
+
+  if (!keycloakUserId) {
+    return false;
+  }
+
+  const baseUrl = getBaseUrl();
+  const realm = getRealm();
+  const token = await getAdminAccessToken();
+
+  const response = await fetch(
+    `${baseUrl}/admin/realms/${realm}/users/${keycloakUserId}`,
+    {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+
+  if (!response.ok && response.status !== 404) {
+    const errorText = await response.text();
+    throw new Error(`Failed to delete Keycloak user: ${errorText}`);
+  }
+
+  return true;
+}
+
 module.exports = {
   isKeycloakAdminConfigured,
   createKeycloakUser,
@@ -218,4 +310,6 @@ module.exports = {
   shouldCreateTemporaryPassword,
   generateTemporaryPassword,
   setKeycloakTemporaryPassword,
+  updateKeycloakUser,
+  deleteKeycloakUser,
 };
