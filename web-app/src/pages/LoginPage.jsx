@@ -196,21 +196,22 @@ async function handleSubmit(event) {
               provided by your admin.
             </p>
           </div>
+          {!isKeycloakAuth && (
+            <div className="mt-4 rounded-2xl bg-white p-4 text-sm text-gray-600">
+              <p className="font-semibold text-gray-800">New company?</p>
+              <p className="mt-1">
+                Register your company to create a new tenant workspace and first admin account.
+              </p>
 
-          <div className="mt-4 rounded-2xl bg-white p-4 text-sm text-gray-600">
-            <p className="font-semibold text-gray-800">New company?</p>
-            <p className="mt-1">
-              Register your company to create a new tenant workspace and first admin account.
-            </p>
-
-            <button
-              type="button"
-              onClick={onShowRegister}
-              className="mt-3 font-semibold text-[#EB5979] hover:underline"
-            >
-              Register Company
-            </button>
-          </div>
+              <button
+                type="button"
+                onClick={onShowRegister}
+                className="mt-3 font-semibold text-[#EB5979] hover:underline"
+              >
+                Register Company
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -26,6 +26,10 @@ const allowedOrigins = (process.env.CORS_ORIGIN || '')
   .map((origin) => origin.trim())
   .filter(Boolean);
 
+function isKeycloakAuthEnabled() {
+  return process.env.AUTH_PROVIDER === 'keycloak';
+}
+
 function getJwtSecret() {
   return process.env.JWT_SECRET || 'fieldsync-demo-secret-change-me';
 }
@@ -384,6 +388,11 @@ app.get('/health', (req, res) => {
  * Checks username/password from database and validates app access permission.
  */
 app.post('/api/auth/login', async (req, res) => {
+  if (isKeycloakAuthEnabled()) {
+  return res.status(410).json({
+    message: 'Local username/password login is disabled. Please login using Keycloak.',
+  });
+}
   try {
     const { username, password, clientType } = req.body;
     const resolvedClientType = clientType === 'mobile' ? 'mobile' : 'web';
@@ -462,6 +471,11 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 app.post('/api/auth/register-tenant', async (req, res) => {
+  if (isKeycloakAuthEnabled()) {
+  return res.status(410).json({
+    message: 'Company self-registration is disabled when Keycloak authentication is enabled.',
+  });
+}
   const client = await pool.connect();
 
   try {
@@ -865,8 +879,11 @@ app.post('/api/admin/users', authenticateToken, requireAdmin, async (req, res) =
       });
     }
 
-    const setupToken = generateSetupToken();
-    const setupLink = `${getFrontendUrl().replace(/\/$/, '')}/?setupToken=${setupToken}`;
+    const keycloakAuthEnabled = isKeycloakAuthEnabled();
+    const setupToken = keycloakAuthEnabled ? null : generateSetupToken();
+    const setupLink = keycloakAuthEnabled
+      ? ''
+      : `${getFrontendUrl().replace(/\/$/, '')}/?setupToken=${setupToken}`;
     const mobileAppDownloadUrl = getMobileAppDownloadUrl();
 
     const result = await pool.query(
@@ -881,6 +898,7 @@ app.post('/api/admin/users', authenticateToken, requireAdmin, async (req, res) =
         access_web,
         access_mobile,
         password_change_required,
+        confirmed_at,
         confirmation_token,
         confirmation_expires_at,
         is_active,
@@ -890,16 +908,17 @@ app.post('/api/admin/users', authenticateToken, requireAdmin, async (req, res) =
         $1,
         $2,
         $3,
-        'PASSWORD_NOT_SET',
         $4,
-        'user',
         $5,
+        'user',
         $6,
-        TRUE,
         $7,
-        CURRENT_TIMESTAMP + INTERVAL '7 days',
+        NOT $8::boolean,
+        CASE WHEN $8::boolean THEN CURRENT_TIMESTAMP ELSE NULL END,
+        $9,
+        CASE WHEN $8::boolean THEN NULL ELSE CURRENT_TIMESTAMP + INTERVAL '7 days' END,
         TRUE,
-        $8
+        $10
       )
       RETURNING
         id,
@@ -919,9 +938,11 @@ app.post('/api/admin/users', authenticateToken, requireAdmin, async (req, res) =
         req.user.tenantId,
         normalizedUsername,
         normalizedEmail,
+        keycloakAuthEnabled ? 'KEYCLOAK_AUTH_ONLY' : 'PASSWORD_NOT_SET',
         fullName.trim(),
         Boolean(accessWeb),
         Boolean(accessMobile),
+        keycloakAuthEnabled,
         setupToken,
         req.user.id,
       ]
@@ -930,24 +951,28 @@ app.post('/api/admin/users', authenticateToken, requireAdmin, async (req, res) =
     const user = result.rows[0];
     let emailSent = false;
 
-    try {
-      emailSent = await sendUserInvitationEmail({
-        user,
-        setupLink,
-        mobileAppDownloadUrl,
-      });
-    } catch (emailError) {
-      emailSent = false;
-      console.error('Failed to send user invitation email:', emailError.message);
+    if (!keycloakAuthEnabled) {
+      try {
+        emailSent = await sendUserInvitationEmail({
+          user,
+          setupLink,
+          mobileAppDownloadUrl,
+        });
+      } catch (emailError) {
+        emailSent = false;
+        console.error('Failed to send user invitation email:', emailError.message);
+      }
     }
 
     res.status(201).json({
-      message: emailSent
-        ? 'User created and setup email sent successfully'
-        : 'User created. Email was not sent because SMTP is not configured or failed.',
+      message: keycloakAuthEnabled
+        ? 'FieldSync user profile created. Create a matching Keycloak user using the same email address.'
+        : emailSent
+          ? 'User created and setup email sent successfully'
+          : 'User created. Email was not sent because SMTP is not configured or failed.',
       user,
       emailSent,
-      setupLink,
+      setupLink: keycloakAuthEnabled ? null : setupLink,
       mobileAppDownloadUrl,
     });
   } catch (error) {
