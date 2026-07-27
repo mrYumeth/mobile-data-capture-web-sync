@@ -19,6 +19,11 @@ const dnsPromises = dns.promises;
 
 const { verifyKeycloakToken } = require('./src/services/keycloakAuthService');
 
+const {
+  createKeycloakUser,
+  sendKeycloakUserInviteEmail,
+} = require('./src/services/keycloakAdminService');
+
 const app = express();
 
 const allowedOrigins = (process.env.CORS_ORIGIN || '')
@@ -890,6 +895,18 @@ app.post('/api/admin/users', authenticateToken, requireAdmin, async (req, res) =
     }
 
     const keycloakAuthEnabled = isKeycloakAuthEnabled();
+    let keycloakUserId = null;
+    let keycloakInviteSent = false;
+
+    if (keycloakAuthEnabled) {
+      keycloakUserId = await createKeycloakUser({
+        username: normalizedUsername,
+        email: normalizedEmail,
+        fullName: fullName.trim(),
+        accessWeb: Boolean(accessWeb),
+        accessMobile: Boolean(accessMobile),
+      });
+    }
     const setupToken = keycloakAuthEnabled ? null : generateSetupToken();
     const setupLink = keycloakAuthEnabled
       ? ''
@@ -911,6 +928,7 @@ app.post('/api/admin/users', authenticateToken, requireAdmin, async (req, res) =
         confirmed_at,
         confirmation_token,
         confirmation_expires_at,
+        keycloak_user_id,
         is_active,
         created_by
       )
@@ -927,8 +945,9 @@ app.post('/api/admin/users', authenticateToken, requireAdmin, async (req, res) =
         CASE WHEN $8::boolean THEN CURRENT_TIMESTAMP ELSE NULL END,
         $9,
         CASE WHEN $8::boolean THEN NULL ELSE CURRENT_TIMESTAMP + INTERVAL '7 days' END,
+        $10,
         TRUE,
-        $10
+        $11
       )
       RETURNING
         id,
@@ -954,12 +973,22 @@ app.post('/api/admin/users', authenticateToken, requireAdmin, async (req, res) =
         Boolean(accessMobile),
         keycloakAuthEnabled,
         setupToken,
+        keycloakUserId,
         req.user.id,
       ]
     );
 
     const user = result.rows[0];
     let emailSent = false;
+
+      if (keycloakAuthEnabled && keycloakUserId) {
+    try {
+      keycloakInviteSent = await sendKeycloakUserInviteEmail(keycloakUserId);
+    } catch (inviteError) {
+      keycloakInviteSent = false;
+      console.error('Failed to send Keycloak invite email:', inviteError.message);
+    }
+  }
 
     if (!keycloakAuthEnabled) {
       try {
@@ -976,12 +1005,16 @@ app.post('/api/admin/users', authenticateToken, requireAdmin, async (req, res) =
 
     res.status(201).json({
       message: keycloakAuthEnabled
-        ? 'FieldSync user profile created. Create a matching Keycloak user using the same email address.'
+        ? keycloakInviteSent
+          ? 'User created in FieldSync and Keycloak. Keycloak setup email sent.'
+          : 'User created in FieldSync and Keycloak. Keycloak setup email was not sent.'
         : emailSent
           ? 'User created and setup email sent successfully'
           : 'User created. Email was not sent because SMTP is not configured or failed.',
       user,
       emailSent,
+      keycloakUserId,
+      keycloakInviteSent,
       setupLink: keycloakAuthEnabled ? null : setupLink,
       mobileAppDownloadUrl,
     });
