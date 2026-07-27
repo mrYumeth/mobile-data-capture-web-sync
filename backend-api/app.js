@@ -994,14 +994,14 @@ app.post('/api/admin/users', authenticateToken, requireAdmin, async (req, res) =
     const user = result.rows[0];
     let emailSent = false;
 
-      if (keycloakAuthEnabled && keycloakUserId) {
-    try {
-      keycloakInviteSent = await sendKeycloakUserInviteEmail(keycloakUserId);
-    } catch (inviteError) {
-      keycloakInviteSent = false;
-      console.error('Failed to send Keycloak invite email:', inviteError.message);
+    if (keycloakAuthEnabled && keycloakUserId && !keycloakTemporaryPassword) {
+      try {
+        keycloakInviteSent = await sendKeycloakUserInviteEmail(keycloakUserId);
+      } catch (inviteError) {
+        keycloakInviteSent = false;
+        console.error('Failed to send Keycloak invite email:', inviteError.message);
+      }
     }
-  }
 
     if (!keycloakAuthEnabled) {
       try {

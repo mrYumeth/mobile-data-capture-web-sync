@@ -101,9 +101,9 @@ async function createKeycloakUser({
       email,
       firstName,
       lastName,
-      enabled: true,
-      emailVerified: false,
-      requiredActions: ['VERIFY_EMAIL', 'UPDATE_PASSWORD'],
+    enabled: true,
+    emailVerified: true,
+    requiredActions: ['UPDATE_PASSWORD'],
       attributes: {
         fieldsync_access_web: [String(Boolean(accessWeb))],
         fieldsync_access_mobile: [String(Boolean(accessMobile))],
