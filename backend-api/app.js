@@ -22,6 +22,9 @@ const { verifyKeycloakToken } = require('./src/services/keycloakAuthService');
 const {
   createKeycloakUser,
   sendKeycloakUserInviteEmail,
+  shouldCreateTemporaryPassword,
+  generateTemporaryPassword,
+  setKeycloakTemporaryPassword,
 } = require('./src/services/keycloakAdminService');
 
 const app = express();
@@ -897,6 +900,7 @@ app.post('/api/admin/users', authenticateToken, requireAdmin, async (req, res) =
     const keycloakAuthEnabled = isKeycloakAuthEnabled();
     let keycloakUserId = null;
     let keycloakInviteSent = false;
+    let keycloakTemporaryPassword = null;
 
     if (keycloakAuthEnabled) {
       keycloakUserId = await createKeycloakUser({
@@ -906,6 +910,15 @@ app.post('/api/admin/users', authenticateToken, requireAdmin, async (req, res) =
         accessWeb: Boolean(accessWeb),
         accessMobile: Boolean(accessMobile),
       });
+
+      if (shouldCreateTemporaryPassword()) {
+        keycloakTemporaryPassword = generateTemporaryPassword();
+
+        await setKeycloakTemporaryPassword(
+          keycloakUserId,
+          keycloakTemporaryPassword
+        );
+      }
     }
     const setupToken = keycloakAuthEnabled ? null : generateSetupToken();
     const setupLink = keycloakAuthEnabled
@@ -1005,9 +1018,11 @@ app.post('/api/admin/users', authenticateToken, requireAdmin, async (req, res) =
 
     res.status(201).json({
       message: keycloakAuthEnabled
-        ? keycloakInviteSent
-          ? 'User created in FieldSync and Keycloak. Keycloak setup email sent.'
-          : 'User created in FieldSync and Keycloak. Keycloak setup email was not sent.'
+        ? keycloakTemporaryPassword
+          ? 'User created in FieldSync and Keycloak. Temporary password generated.'
+          : keycloakInviteSent
+            ? 'User created in FieldSync and Keycloak. Keycloak setup email sent.'
+            : 'User created in FieldSync and Keycloak. Keycloak setup email was not sent.'
         : emailSent
           ? 'User created and setup email sent successfully'
           : 'User created. Email was not sent because SMTP is not configured or failed.',
@@ -1015,6 +1030,7 @@ app.post('/api/admin/users', authenticateToken, requireAdmin, async (req, res) =
       emailSent,
       keycloakUserId,
       keycloakInviteSent,
+      keycloakTemporaryPassword,
       setupLink: keycloakAuthEnabled ? null : setupLink,
       mobileAppDownloadUrl,
     });

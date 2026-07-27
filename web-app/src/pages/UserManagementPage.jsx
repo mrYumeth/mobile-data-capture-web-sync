@@ -14,6 +14,7 @@ function UserManagementPage() {
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [lastSetupLink, setLastSetupLink] = useState('')
+  const [temporaryPassword, setTemporaryPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [activeTab, setActiveTab] = useState('users')
   const [editingUserId, setEditingUserId] = useState(null)
@@ -47,6 +48,7 @@ async function handleCreateUser(event) {
   setError('')
   setMessage('')
   setLastSetupLink('')
+  setTemporaryPassword('')
 
   try {
     setIsLoading(true)
@@ -69,6 +71,7 @@ async function handleCreateUser(event) {
 
     setMessage(result.message || 'User created successfully.')
     setLastSetupLink(result.setupLink || '')
+    setTemporaryPassword(result.keycloakTemporaryPassword || '')
 
     setFormData({
       fullName: '',
@@ -195,9 +198,21 @@ function handleCancelEdit() {
             </div>
           )}
 
-          {message && (
+                    {message && (
             <div className="mb-5 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-700">
               {message}
+            </div>
+          )}
+
+          {temporaryPassword && (
+            <div className="mb-5 rounded-xl border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
+              <p className="font-bold">Temporary Keycloak Password</p>
+              <p className="mt-1 break-all font-mono text-base">
+                {temporaryPassword}
+              </p>
+              <p className="mt-2">
+                Copy this password and provide it to the user securely. The user will be asked to change it after first login.
+              </p>
             </div>
           )}
 

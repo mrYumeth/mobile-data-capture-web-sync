@@ -1,3 +1,5 @@
+const crypto = require('crypto');
+
 function getBaseUrl() {
   return (process.env.KEYCLOAK_ADMIN_BASE_URL || '').replace(/\/$/, '');
 }
@@ -168,8 +170,52 @@ async function sendKeycloakUserInviteEmail(keycloakUserId) {
   return true;
 }
 
+function shouldCreateTemporaryPassword() {
+  return process.env.KEYCLOAK_CREATE_TEMP_PASSWORD === 'true';
+}
+
+function generateTemporaryPassword() {
+  return `Fs-${crypto.randomBytes(6).toString('base64url')}!9`;
+}
+
+async function setKeycloakTemporaryPassword(keycloakUserId, temporaryPassword) {
+  if (!isKeycloakAdminConfigured()) {
+    throw new Error('Keycloak Admin API is not configured');
+  }
+
+  const baseUrl = getBaseUrl();
+  const realm = getRealm();
+  const token = await getAdminAccessToken();
+
+  const response = await fetch(
+    `${baseUrl}/admin/realms/${realm}/users/${keycloakUserId}/reset-password`,
+    {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        type: 'password',
+        value: temporaryPassword,
+        temporary: true,
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to set Keycloak temporary password: ${errorText}`);
+  }
+
+  return true;
+}
+
 module.exports = {
   isKeycloakAdminConfigured,
   createKeycloakUser,
   sendKeycloakUserInviteEmail,
+  shouldCreateTemporaryPassword,
+  generateTemporaryPassword,
+  setKeycloakTemporaryPassword,
 };
