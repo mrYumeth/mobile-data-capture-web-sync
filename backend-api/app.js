@@ -1170,6 +1170,7 @@ app.patch('/api/admin/users/:id/access', authenticateToken, requireAdmin, async 
         is_active,
         confirmed_at,
         password_change_required,
+        keycloak_user_id,
         created_at
       `,
       [accessWeb, accessMobile, isActive, id, req.user.tenantId]

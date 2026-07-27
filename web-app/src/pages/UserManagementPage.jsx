@@ -18,6 +18,8 @@ function UserManagementPage() {
   const [activeTab, setActiveTab] = useState('users')
   const [editingUserId, setEditingUserId] = useState(null)
 
+  const isKeycloakAuth = import.meta.env.VITE_AUTH_PROVIDER === 'keycloak'
+
   async function loadUsers() {
     try {
       const data = await userApi.getAll()
@@ -169,17 +171,19 @@ function handleCancelEdit() {
         >
             User Management
         </button>
-        <button
+        {!isKeycloakAuth && (
+          <button
             type="button"
             onClick={() => setActiveTab('password')}
             className={`rounded-full px-5 py-2 text-sm font-bold transition ${
-            activeTab === 'password'
+              activeTab === 'password'
                 ? 'bg-[#EB5979] text-white shadow-lg shadow-[#EB5979]/30'
                 : 'bg-white text-gray-700 hover:bg-gray-100'
             }`}
-        >
+          >
             Change My Password
-        </button>
+          </button>
+        )}
         </div>
 
         {activeTab === 'password' && <ChangePasswordPage />}
@@ -300,6 +304,7 @@ function handleCancelEdit() {
                   <th className="px-4 py-3">Mobile</th>
                   <th className="px-4 py-3">Active</th>
                   <th className="px-4 py-3">Confirmed</th>
+                  <th className="px-4 py-3">IAM</th>
                   <th className="px-4 py-3">Actions</th>
                 </tr>
               </thead>
