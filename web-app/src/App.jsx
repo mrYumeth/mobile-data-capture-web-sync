@@ -57,6 +57,8 @@ function App() {
     return getStoredUser()
   })
 
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
+
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
     return Boolean(localStorage.getItem(AUTH_TOKEN_KEY))
   })
@@ -144,18 +146,52 @@ function App() {
     setIsAuthenticated(true)
   }
 
-function handleLogout() {
+async function handleLogout() {
+  if (isLoggingOut) {
+    return
+  }
+
+  setIsLoggingOut(true)
+
   localStorage.removeItem(AUTH_TOKEN_KEY)
   localStorage.removeItem(AUTH_STATE_KEY)
   localStorage.removeItem(AUTH_USER_KEY)
+  localStorage.removeItem(LAST_ACTIVITY_KEY)
 
   setCurrentUser(null)
-  setIsAuthenticated(false)
   setActivePage('dashboard')
 
-  if (import.meta.env.VITE_AUTH_PROVIDER === 'keycloak') {
-    logoutFromKeycloak().catch(() => {})
+  if (isKeycloakAuth) {
+    try {
+      await logoutFromKeycloak()
+      return
+    } catch (error) {
+      console.error('Keycloak logout failed:', error)
+    }
   }
+
+  setIsAuthenticated(false)
+  setIsLoggingOut(false)
+}
+
+if (isLoggingOut) {
+  return (
+    <div className="flex min-h-screen items-center justify-center px-4">
+      <div className="rounded-3xl bg-white/90 px-8 py-6 text-center shadow-2xl">
+        <img
+          src="/logo.png"
+          alt="FieldSync Logo"
+          className="mx-auto mb-4 h-14 w-14 rounded-full object-contain"
+        />
+        <h1 className="text-xl font-extrabold text-gray-900">
+          Signing out...
+        </h1>
+        <p className="mt-2 text-sm text-gray-500">
+          Please wait while your FieldSync and Keycloak sessions are closed.
+        </p>
+      </div>
+    </div>
+  )
 }
 
   if (setupToken && !isKeycloakAuth) {
@@ -292,13 +328,14 @@ if (!isAuthenticated) {
             >
               {theme === 'dark' ? '☀' : '☾'}
             </button>
-
+            
             <button
               type="button"
               onClick={handleLogout}
-              className="hidden rounded-full border border-white/10 px-4 py-2 text-sm font-semibold transition hover:bg-white/10 xl:block"
+              disabled={isLoggingOut}
+              className="hidden rounded-full border border-white/10 px-4 py-2 text-sm font-semibold transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60 xl:block"
             >
-              Logout
+              {isLoggingOut ? 'Signing out...' : 'Logout'}
             </button>
           </div>
         </div>
