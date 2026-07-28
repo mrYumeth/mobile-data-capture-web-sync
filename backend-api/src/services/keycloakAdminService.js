@@ -159,7 +159,7 @@ async function sendKeycloakUserInviteEmail(keycloakUserId) {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(['VERIFY_EMAIL', 'UPDATE_PASSWORD']),
+    body: JSON.stringify(['UPDATE_PASSWORD']),
   });
 
   if (!response.ok) {
