@@ -100,12 +100,6 @@ async function handleSubmit(event) {
                 mobile sync activity from one clean dashboard.
               </p>
             </div>
-
-            <div className="rounded-2xl border border-white/10 bg-white/10 p-5 backdrop-blur">
-              <p className="text-sm text-gray-300">Demo Credentials</p>
-              <p className="mt-2 font-semibold">Username: admin</p>
-              <p className="font-semibold">Password: admin123</p>
-            </div>
           </div>
         </div>
 
@@ -196,7 +190,6 @@ async function handleSubmit(event) {
               provided by your admin.
             </p>
           </div>
-          {!isKeycloakAuth && (
             <div className="mt-4 rounded-2xl bg-white p-4 text-sm text-gray-600">
               <p className="font-semibold text-gray-800">New company?</p>
               <p className="mt-1">
@@ -211,7 +204,6 @@ async function handleSubmit(event) {
                 Register Company
               </button>
             </div>
-          )}
         </div>
       </div>
     </div>

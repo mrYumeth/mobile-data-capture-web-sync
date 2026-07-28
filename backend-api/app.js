@@ -481,12 +481,12 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 app.post('/api/auth/register-tenant', async (req, res) => {
-  if (isKeycloakAuthEnabled()) {
-  return res.status(410).json({
-    message: 'Company self-registration is disabled when Keycloak authentication is enabled.',
-  });
-}
   const client = await pool.connect();
+
+  let transactionStarted = false;
+  let keycloakUserId = null;
+  let keycloakTemporaryPassword = null;
+  let keycloakInviteSent = false;
 
   try {
     const {
@@ -497,6 +497,8 @@ app.post('/api/auth/register-tenant', async (req, res) => {
       email,
       password,
     } = req.body;
+
+    const keycloakAuthEnabled = isKeycloakAuthEnabled();
 
     if (!tenantName || !tenantName.trim()) {
       return res.status(400).json({
@@ -522,7 +524,7 @@ app.post('/api/auth/register-tenant', async (req, res) => {
       });
     }
 
-    if (!password || password.length < 6) {
+    if (!keycloakAuthEnabled && (!password || password.length < 6)) {
       return res.status(400).json({
         message: 'Password must contain at least 6 characters',
       });
@@ -541,6 +543,7 @@ app.post('/api/auth/register-tenant', async (req, res) => {
     }
 
     await client.query('BEGIN');
+    transactionStarted = true;
 
     const existingTenant = await client.query(
       `
@@ -554,6 +557,7 @@ app.post('/api/auth/register-tenant', async (req, res) => {
 
     if (existingTenant.rows.length > 0) {
       await client.query('ROLLBACK');
+      transactionStarted = false;
 
       return res.status(409).json({
         message: 'Company slug is already registered',
@@ -573,6 +577,7 @@ app.post('/api/auth/register-tenant', async (req, res) => {
 
     if (existingUser.rows.length > 0) {
       await client.query('ROLLBACK');
+      transactionStarted = false;
 
       return res.status(409).json({
         message: 'Admin username or email is already registered',
@@ -590,6 +595,25 @@ app.post('/api/auth/register-tenant', async (req, res) => {
 
     const tenant = tenantResult.rows[0];
 
+    if (keycloakAuthEnabled) {
+      keycloakUserId = await createKeycloakUser({
+        username: normalizedUsername,
+        email: normalizedEmail,
+        fullName: fullName.trim(),
+        accessWeb: true,
+        accessMobile: true,
+      });
+
+      if (shouldCreateTemporaryPassword()) {
+        keycloakTemporaryPassword = generateTemporaryPassword();
+
+        await setKeycloakTemporaryPassword(
+          keycloakUserId,
+          keycloakTemporaryPassword
+        );
+      }
+    }
+
     const userResult = await client.query(
       `
       INSERT INTO users (
@@ -603,6 +627,7 @@ app.post('/api/auth/register-tenant', async (req, res) => {
         access_mobile,
         password_change_required,
         confirmed_at,
+        keycloak_user_id,
         is_active
       )
       VALUES (
@@ -616,6 +641,7 @@ app.post('/api/auth/register-tenant', async (req, res) => {
         TRUE,
         FALSE,
         CURRENT_TIMESTAMP,
+        $6,
         TRUE
       )
       RETURNING
@@ -627,34 +653,76 @@ app.post('/api/auth/register-tenant', async (req, res) => {
         role,
         access_web,
         access_mobile,
-        password_change_required
+        password_change_required,
+        is_active,
+        keycloak_user_id
       `,
       [
         tenant.id,
         normalizedUsername,
         normalizedEmail,
-        createPasswordHash(password),
+        keycloakAuthEnabled
+          ? 'KEYCLOAK_AUTH_ONLY'
+          : createPasswordHash(password),
         fullName.trim(),
+        keycloakUserId,
       ]
     );
 
     const user = userResult.rows[0];
     const tokenPayload = buildUserPayload(user, 'web');
 
+    await client.query('COMMIT');
+    transactionStarted = false;
+
+    if (keycloakAuthEnabled && keycloakUserId && !keycloakTemporaryPassword) {
+      try {
+        keycloakInviteSent = await sendKeycloakUserInviteEmail(keycloakUserId);
+      } catch (inviteError) {
+        keycloakInviteSent = false;
+        console.error('Failed to send Keycloak tenant admin invite:', inviteError.message);
+      }
+    }
+
+    if (keycloakAuthEnabled) {
+      return res.status(201).json({
+        message: keycloakTemporaryPassword
+          ? 'Company registered successfully. Temporary Keycloak password generated for the admin.'
+          : keycloakInviteSent
+            ? 'Company registered successfully. Keycloak setup email sent to the admin.'
+            : 'Company registered successfully. Keycloak setup email was not sent.',
+        tenant,
+        user: tokenPayload,
+        keycloakUserId,
+        keycloakTemporaryPassword,
+        keycloakInviteSent,
+      });
+    }
+
     const token = jwt.sign(tokenPayload, getJwtSecret(), {
       expiresIn: process.env.JWT_EXPIRES_IN || '12h',
     });
 
-    await client.query('COMMIT');
-
-    res.status(201).json({
+    return res.status(201).json({
       message: 'Company registered successfully',
       tenant,
       token,
       user: tokenPayload,
     });
   } catch (error) {
-    await client.query('ROLLBACK');
+    if (transactionStarted) {
+      await client.query('ROLLBACK').catch((rollbackError) => {
+        console.error('Tenant registration rollback failed:', rollbackError.message);
+      });
+    }
+
+    if (keycloakUserId) {
+      try {
+        await deleteKeycloakUser(keycloakUserId);
+      } catch (deleteError) {
+        console.error('Failed to clean up Keycloak user after tenant registration failure:', deleteError.message);
+      }
+    }
 
     res.status(500).json({
       message: 'Company registration failed',

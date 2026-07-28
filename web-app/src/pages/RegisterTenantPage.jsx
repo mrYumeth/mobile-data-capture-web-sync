@@ -15,13 +15,20 @@ function RegisterTenantPage({
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState('')
+  const [successMessage, setSuccessMessage] = useState('')
+  const [temporaryPassword, setTemporaryPassword] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const isKeycloakAuth = import.meta.env.VITE_AUTH_PROVIDER === 'keycloak'
 
   async function handleSubmit(event) {
     event.preventDefault()
     setError('')
 
-    if (password !== confirmPassword) {
+    setSuccessMessage('')
+    setTemporaryPassword('')
+
+    if (!isKeycloakAuth && password !== confirmPassword) {
       setError('Password and confirm password do not match.')
       return
     }
@@ -29,19 +36,30 @@ function RegisterTenantPage({
     setIsSubmitting(true)
 
     try {
-      const result = await authApi.registerTenant({
-        tenantName: tenantName.trim(),
-        tenantSlug: tenantSlug.trim() || undefined,
-        fullName: fullName.trim(),
-        username: username.trim(),
-        email: email.trim(),
-        password,
-      })
+          const registrationPayload = {
+      tenantName: tenantName.trim(),
+      tenantSlug: tenantSlug.trim() || undefined,
+      fullName: fullName.trim(),
+      username: username.trim(),
+      email: email.trim(),
+    }
 
-      localStorage.setItem('fieldsync-auth-token', result.token)
-      localStorage.setItem('fieldsync-admin-auth', 'true')
+    if (!isKeycloakAuth) {
+      registrationPayload.password = password
+    }
 
-      onRegisterSuccess(result.user)
+    const result = await authApi.registerTenant(registrationPayload)
+
+    if (isKeycloakAuth) {
+      setSuccessMessage(result.message || 'Company registered successfully.')
+      setTemporaryPassword(result.keycloakTemporaryPassword || '')
+      return
+    }
+
+    localStorage.setItem('fieldsync-auth-token', result.token)
+    localStorage.setItem('fieldsync-admin-auth', 'true')
+
+    onRegisterSuccess(result.user)
     } catch (error) {
       setError(error.message || 'Company registration failed.')
     } finally {
@@ -116,6 +134,24 @@ function RegisterTenantPage({
           {error && (
             <div className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
               {error}
+            </div>
+          )}
+
+                    {successMessage && (
+            <div className="mt-6 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-700">
+              {successMessage}
+            </div>
+          )}
+
+          {temporaryPassword && (
+            <div className="mt-6 rounded-xl border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
+              <p className="font-bold">Temporary Keycloak Password</p>
+              <p className="mt-1 break-all font-mono text-base">
+                {temporaryPassword}
+              </p>
+              <p className="mt-2">
+                Use this password to log in through Keycloak. You will be asked to create a new password after first login.
+              </p>
             </div>
           )}
 
@@ -194,6 +230,8 @@ function RegisterTenantPage({
               />
             </div>
 
+          {!isKeycloakAuth && (
+          <>
             <div>
               <label className="mb-2 block text-sm font-semibold text-gray-700">
                 Password
@@ -223,6 +261,8 @@ function RegisterTenantPage({
                 required
               />
             </div>
+          </>
+        )}
 
             <button
               type="submit"
