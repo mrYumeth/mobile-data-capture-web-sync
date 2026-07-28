@@ -791,11 +791,14 @@ app.post('/api/auth/setup-password', async (req, res) => {
         message: 'Invalid or expired setup link',
       });
     }
+    
+    const updatedUser = result.rows[0];
 
     res.json({
       message: 'Password set successfully. You can now login.',
       user: updatedUser,
     });
+
   } catch (error) {
     res.status(500).json({
       message: 'Password setup failed',
@@ -1267,13 +1270,13 @@ app.delete('/api/admin/users/:id', authenticateToken, requireAdmin, async (req, 
       [id, req.user.tenantId]
     );
 
-    const existingUserRow = existingUser.rows[0];
-
     if (existingUser.rows.length === 0) {
       return res.status(404).json({
         message: 'User not found',
       });
     }
+
+    const existingUserRow = existingUser.rows[0];
 
     if (existingUserRow.role === 'admin') {
       return res.status(400).json({
@@ -1297,25 +1300,15 @@ app.delete('/api/admin/users/:id', authenticateToken, requireAdmin, async (req, 
       [id, req.user.tenantId]
     );
 
-    const updatedUser = result.rows[0];
+    const deletedUser = result.rows[0];
 
     if (isKeycloakAuthEnabled() && existingUserRow.keycloak_user_id) {
-      await updateKeycloakUser(existingUserRow.keycloak_user_id, {
-        fullName: updatedUser.full_name,
-        email: updatedUser.email,
-        accessWeb: updatedUser.access_web,
-        accessMobile: updatedUser.access_mobile,
-        isActive: updatedUser.is_active,
-      });
-    }
-
-        if (isKeycloakAuthEnabled() && existingUser.rows[0].keycloak_user_id) {
-      await deleteKeycloakUser(existingUser.rows[0].keycloak_user_id);
+      await deleteKeycloakUser(existingUserRow.keycloak_user_id);
     }
 
     res.json({
       message: 'User permanently deleted successfully',
-      user: updatedUser,
+      user: deletedUser,
     });
   } catch (error) {
     res.status(500).json({
