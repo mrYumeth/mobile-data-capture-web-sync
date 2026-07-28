@@ -14,44 +14,74 @@ body,
 #keycloak-bg {
   background:
     radial-gradient(circle at 18% 18%, rgba(235, 89, 121, 0.24), transparent 34%),
-    radial-gradient(circle at 80% 80%, rgba(235, 89, 121, 0.10), transparent 36%),
+    radial-gradient(circle at 82% 80%, rgba(235, 89, 121, 0.10), transparent 36%),
     linear-gradient(135deg, #2A2B32 0%, #111827 55%, #0B1120 100%) !important;
   color: #111827 !important;
 }
 
-/* Center everything */
-.login-pf-page {
+/* Remove Keycloak's side brand area */
+#kc-header,
+.pf-v5-c-login__header,
+.pf-c-login__header {
+  display: none !important;
+}
+
+/* Force the whole page to a simple centered layout */
+.pf-v5-c-login,
+.pf-c-login,
+.login-pf-page,
+.pf-v5-c-login__container,
+.pf-c-login__container {
   min-height: 100vh !important;
   width: 100vw !important;
+  max-width: 100vw !important;
   display: flex !important;
-  flex-direction: column !important;
   align-items: center !important;
   justify-content: center !important;
-  padding: 32px 18px !important;
   margin: 0 !important;
+  padding: 24px !important;
+  background: transparent !important;
+  grid-template-columns: none !important;
+  grid-template-areas: none !important;
 }
 
-/* Brand above the card */
-#kc-header {
-  width: 100% !important;
-  margin: 0 0 28px 0 !important;
-  text-align: center !important;
+/* Force card to exact center */
+.pf-v5-c-login__main,
+.pf-c-login__main,
+.card-pf,
+.login-pf-page .card-pf {
+  width: 520px !important;
+  max-width: calc(100vw - 36px) !important;
+  margin: 0 auto !important;
+  padding: 44px 48px !important;
+  border-radius: 28px !important;
+  border: 1px solid rgba(255, 255, 255, 0.75) !important;
+  border-top: 5px solid #EB5979 !important;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(241, 241, 243, 0.95)) !important;
+  box-shadow:
+    0 34px 90px rgba(0, 0, 0, 0.38),
+    0 18px 45px rgba(235, 89, 121, 0.16) !important;
+  backdrop-filter: blur(18px) !important;
+  position: relative !important;
 }
 
-#kc-header-wrapper {
-  color: #ffffff !important;
-  font-size: 30px !important;
-  font-weight: 900 !important;
-  letter-spacing: 0.28em !important;
-  text-transform: uppercase !important;
-  text-shadow: 0 12px 35px rgba(0, 0, 0, 0.45) !important;
+/* Remove internal PatternFly spacing */
+.pf-v5-c-login__main-header,
+.pf-c-login__main-header,
+.pf-v5-c-login__main-body,
+.pf-c-login__main-body {
+  padding: 0 !important;
 }
 
-#kc-header-wrapper::before {
+/* Add FieldSync logo inside the card */
+#kc-page-title::before,
+.pf-v5-c-title::before,
+.pf-c-title::before {
   content: "";
   display: block;
-  width: 88px;
-  height: 88px;
+  width: 82px;
+  height: 82px;
   margin: 0 auto 18px auto;
   background-image: url("../img/logo.png");
   background-size: 72%;
@@ -60,37 +90,35 @@ body,
   border-radius: 999px;
   background-color: #ffffff;
   box-shadow:
-    0 18px 45px rgba(0, 0, 0, 0.28),
-    0 0 0 8px rgba(255, 255, 255, 0.08);
+    0 18px 45px rgba(0, 0, 0, 0.22),
+    0 0 0 8px rgba(235, 89, 121, 0.10);
 }
 
-/* Login card centered */
-.card-pf,
-.login-pf-page .card-pf,
-.pf-v5-c-login__main {
-  width: 520px !important;
-  max-width: calc(100vw - 36px) !important;
-  margin: 0 auto !important;
-  padding: 46px 48px !important;
-  border-radius: 28px !important;
-  border: 1px solid rgba(255, 255, 255, 0.75) !important;
-  border-top: 5px solid #EB5979 !important;
-  background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.97), rgba(241, 241, 243, 0.95)) !important;
-  box-shadow:
-    0 34px 90px rgba(0, 0, 0, 0.36),
-    0 18px 45px rgba(235, 89, 121, 0.14) !important;
-  backdrop-filter: blur(18px) !important;
+/* Add FieldSync brand text inside card */
+#kc-page-title::after,
+.pf-v5-c-title::after,
+.pf-c-title::after {
+  content: "FIELDSYNC";
+  display: block;
+  margin-top: 8px;
+  margin-bottom: 28px;
+  color: #EB5979;
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 0.28em;
+  text-align: center;
 }
 
-/* Page title */
+/* Title */
 #kc-page-title,
-.pf-v5-c-title {
+.pf-v5-c-title,
+.pf-c-title {
   color: #081126 !important;
   font-size: 30px !important;
   font-weight: 900 !important;
   line-height: 1.15 !important;
   margin-bottom: 28px !important;
+  text-align: center !important;
 }
 
 /* Labels */
@@ -109,6 +137,7 @@ input[type="email"],
 .pf-v5-c-form-control,
 .pf-c-form-control {
   min-height: 48px !important;
+  width: 100% !important;
   border-radius: 14px !important;
   border: 1px solid #cbd5e1 !important;
   background: #ffffff !important;
@@ -192,30 +221,33 @@ a {
 
 /* Mobile */
 @media (max-width: 640px) {
-  .login-pf-page {
-    padding: 24px 16px !important;
+  .pf-v5-c-login,
+  .pf-c-login,
+  .login-pf-page,
+  .pf-v5-c-login__container,
+  .pf-c-login__container {
+    padding: 18px !important;
   }
 
-  #kc-header-wrapper {
-    font-size: 23px !important;
-    letter-spacing: 0.20em !important;
-  }
-
-  #kc-header-wrapper::before {
-    width: 76px;
-    height: 76px;
-  }
-
+  .pf-v5-c-login__main,
+  .pf-c-login__main,
   .card-pf,
-  .login-pf-page .card-pf,
-  .pf-v5-c-login__main {
+  .login-pf-page .card-pf {
     width: 100% !important;
     padding: 34px 24px !important;
     border-radius: 24px !important;
   }
 
   #kc-page-title,
-  .pf-v5-c-title {
+  .pf-v5-c-title,
+  .pf-c-title {
     font-size: 25px !important;
+  }
+
+  #kc-page-title::before,
+  .pf-v5-c-title::before,
+  .pf-c-title::before {
+    width: 72px;
+    height: 72px;
   }
 }
