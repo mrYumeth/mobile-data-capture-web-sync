@@ -127,7 +127,7 @@ async function handleDeleteUser(user) {
 
 async function handleResetKeycloakPassword(user) {
   const confirmed = window.confirm(
-    `Generate a new temporary password for ${user.full_name || user.username}?`
+    `Send an email and request ${user.full_name || user.username} to reset their password?`
   )
 
   if (!confirmed) {

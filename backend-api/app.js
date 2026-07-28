@@ -1476,6 +1476,17 @@ app.post('/api/admin/users/:id/reset-keycloak-password', authenticateToken, requ
       });
     }
 
+    if (process.env.KEYCLOAK_SEND_INVITE_EMAIL === 'true') {
+      await sendKeycloakUserInviteEmail(user.keycloak_user_id);
+
+      return res.json({
+        message: 'Keycloak password reset email sent successfully.',
+        user,
+        keycloakInviteSent: true,
+        keycloakTemporaryPassword: null,
+      });
+    }
+
     const keycloakTemporaryPassword = generateTemporaryPassword();
 
     await setKeycloakTemporaryPassword(
@@ -1483,9 +1494,10 @@ app.post('/api/admin/users/:id/reset-keycloak-password', authenticateToken, requ
       keycloakTemporaryPassword
     );
 
-    res.json({
+    return res.json({
       message: 'Temporary Keycloak password generated successfully.',
       user,
+      keycloakInviteSent: false,
       keycloakTemporaryPassword,
     });
   } catch (error) {
