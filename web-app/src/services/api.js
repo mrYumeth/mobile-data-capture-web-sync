@@ -119,6 +119,12 @@ export const userApi = {
       method: 'DELETE',
     })
   },
+
+  resetKeycloakPassword(id) {
+  return request(`/api/admin/users/${id}/reset-keycloak-password`, {
+    method: 'POST',
+  })
+},
   
 }
 

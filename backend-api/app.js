@@ -831,6 +831,7 @@ app.get('/api/admin/users', authenticateToken, requireAdmin, async (req, res) =>
           is_active,
           confirmed_at,
           password_change_required,
+          keycloak_user_id,
           created_at
         FROM users
         WHERE tenant_id = $1
@@ -1347,6 +1348,81 @@ app.patch('/api/admin/users/:id/access', authenticateToken, requireAdmin, async 
   } catch (error) {
     res.status(500).json({
       message: 'Failed to update user access',
+      error: error.message,
+    });
+  }
+});
+
+app.post('/api/admin/users/:id/reset-keycloak-password', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const existingUser = await pool.query(
+      `
+      SELECT
+        id,
+        tenant_id,
+        username,
+        email,
+        full_name,
+        role,
+        keycloak_user_id,
+        is_active
+      FROM users
+      WHERE id = $1
+        AND tenant_id = $2
+      LIMIT 1
+      `,
+      [id, req.user.tenantId]
+    );
+
+    if (existingUser.rows.length === 0) {
+      return res.status(404).json({
+        message: 'User not found',
+      });
+    }
+
+    const user = existingUser.rows[0];
+
+    if (user.role === 'admin') {
+      return res.status(400).json({
+        message: 'Admin account password cannot be reset from user management',
+      });
+    }
+
+    if (!isKeycloakAuthEnabled()) {
+      return res.status(400).json({
+        message: 'Keycloak authentication is not enabled',
+      });
+    }
+
+    if (!user.keycloak_user_id) {
+      return res.status(400).json({
+        message: 'This FieldSync user is not linked to a Keycloak account',
+      });
+    }
+
+    if (!user.is_active) {
+      return res.status(400).json({
+        message: 'Cannot reset password for an inactive user',
+      });
+    }
+
+    const keycloakTemporaryPassword = generateTemporaryPassword();
+
+    await setKeycloakTemporaryPassword(
+      user.keycloak_user_id,
+      keycloakTemporaryPassword
+    );
+
+    res.json({
+      message: 'Temporary Keycloak password generated successfully.',
+      user,
+      keycloakTemporaryPassword,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: 'Failed to reset Keycloak password',
       error: error.message,
     });
   }

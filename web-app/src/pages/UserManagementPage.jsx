@@ -125,6 +125,30 @@ async function handleDeleteUser(user) {
   }
 }
 
+async function handleResetKeycloakPassword(user) {
+  const confirmed = window.confirm(
+    `Generate a new temporary password for ${user.full_name || user.username}?`
+  )
+
+  if (!confirmed) {
+    return
+  }
+
+  try {
+    setError('')
+    setMessage('')
+    setLastSetupLink('')
+    setTemporaryPassword('')
+
+    const result = await userApi.resetKeycloakPassword(user.id)
+
+    setMessage(result.message || 'Temporary password generated successfully.')
+    setTemporaryPassword(result.keycloakTemporaryPassword || '')
+  } catch (error) {
+    setError(error.message || 'Failed to reset Keycloak password.')
+  }
+}
+
 function handleCancelEdit() {
   setEditingUserId(null)
 
@@ -367,13 +391,29 @@ function handleCancelEdit() {
                         }
                       />
                     </td>
+                          <td className="px-4 py-3">
+                            {user.confirmed_at ? 'Yes' : 'Pending'}
+                          </td>
 
-                    <td className="px-4 py-3">
-                      {user.confirmed_at ? 'Yes' : 'Pending'}
-                    </td>
-                    <td className="px-4 py-3">
-                        {user.role !== 'admin' ? (
-                            <div className="flex flex-wrap gap-2">
+                          <td className="px-4 py-3">
+                            {isKeycloakAuth ? (
+                              user.keycloak_user_id ? (
+                                <span className="rounded-full bg-green-50 px-3 py-1 text-xs font-bold text-green-700">
+                                  Linked
+                                </span>
+                              ) : (
+                                <span className="rounded-full bg-yellow-50 px-3 py-1 text-xs font-bold text-yellow-700">
+                                  Not linked
+                                </span>
+                              )
+                            ) : (
+                              <span className="text-xs text-gray-400">Local</span>
+                            )}
+                          </td>
+
+                          <td className="px-4 py-3">
+                            {user.role !== 'admin' ? (
+                              <div className="flex flex-wrap gap-2">
                             <button
                                 type="button"
                                 onClick={() => handleEditUser(user)}
@@ -381,6 +421,16 @@ function handleCancelEdit() {
                             >
                                 Edit
                             </button>
+
+                            {isKeycloakAuth && user.keycloak_user_id && user.is_active && (
+                              <button
+                                type="button"
+                                onClick={() => handleResetKeycloakPassword(user)}
+                                className="rounded-full bg-yellow-50 px-3 py-1 text-xs font-bold text-yellow-700 hover:bg-yellow-100"
+                              >
+                                Reset Password
+                              </button>
+                            )}
 
                             <button
                                 type="button"
