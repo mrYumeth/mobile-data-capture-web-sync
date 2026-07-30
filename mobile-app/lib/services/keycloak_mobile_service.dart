@@ -5,17 +5,23 @@ import 'keycloak_config.dart';
 class KeycloakMobileService {
   static const FlutterAppAuth _appAuth = FlutterAppAuth();
 
+  static final AuthorizationServiceConfiguration _serviceConfiguration =
+      AuthorizationServiceConfiguration(
+        authorizationEndpoint:
+            '${KeycloakConfig.issuer}/protocol/openid-connect/auth',
+        tokenEndpoint: '${KeycloakConfig.issuer}/protocol/openid-connect/token',
+        endSessionEndpoint:
+            '${KeycloakConfig.issuer}/protocol/openid-connect/logout',
+      );
+
   Future<TokenResponse?> login() async {
     return _appAuth.authorizeAndExchangeCode(
       AuthorizationTokenRequest(
         KeycloakConfig.clientId,
         KeycloakConfig.redirectUrl,
-        discoveryUrl: KeycloakConfig.discoveryUrl,
+        serviceConfiguration: _serviceConfiguration,
         scopes: KeycloakConfig.scopes,
         promptValues: ['login'],
-
-        // Development only: allows local HTTP Keycloak
-        allowInsecureConnections: true,
       ),
     );
   }
@@ -25,12 +31,9 @@ class KeycloakMobileService {
       TokenRequest(
         KeycloakConfig.clientId,
         KeycloakConfig.redirectUrl,
-        discoveryUrl: KeycloakConfig.discoveryUrl,
+        serviceConfiguration: _serviceConfiguration,
         refreshToken: refreshToken,
         scopes: KeycloakConfig.scopes,
-
-        // Development only: allows local HTTP Keycloak
-        allowInsecureConnections: true,
       ),
     );
   }
