@@ -31,6 +31,8 @@ const {
 
 const app = express();
 
+app.set('trust proxy', 1);
+
 const allowedOrigins = (process.env.CORS_ORIGIN || '')
   .split(',')
   .map((origin) => origin.trim())
@@ -791,7 +793,7 @@ app.post('/api/auth/setup-password', async (req, res) => {
         message: 'Invalid or expired setup link',
       });
     }
-    
+
     const updatedUser = result.rows[0];
 
     res.json({
