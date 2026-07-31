@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../app/app_theme.dart';
 import '../services/auth_service.dart';
 import 'home_screen.dart';
+import '../services/master_data_sync_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -17,6 +18,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
 
   final _authService = AuthService();
+  final _masterDataSyncService = MasterDataSyncService();
 
   bool _isLoading = false;
   bool _obscurePassword = true;
@@ -26,6 +28,53 @@ class _LoginScreenState extends State<LoginScreen> {
     _usernameController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _completeLoginWithAutoSync() async {
+    try {
+      final syncResult = await _masterDataSyncService.syncMasterData();
+
+      debugPrint(
+        'Automatic master data sync completed: '
+        '${syncResult.customerCount} customers, '
+        '${syncResult.locationCount} locations, '
+        '${syncResult.categoryCount} categories.',
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      Navigator.of(
+        context,
+      ).pushReplacement(MaterialPageRoute(builder: (_) => const HomeScreen()));
+    } catch (error) {
+      debugPrint('Automatic master data sync failed: $error');
+
+      // Prevent the newly logged-in tenant from seeing the previous
+      // tenant's locally cached master data.
+      await AuthService.clearSession();
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _isLoading = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Login succeeded, but your tenant data could not be loaded. '
+            'Please check your internet connection and log in again.\n\n'
+            'Details: $error',
+          ),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 6),
+        ),
+      );
+    }
   }
 
   Future<void> _login() async {
@@ -38,25 +87,26 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     final result = await _authService.login(
-      username: _usernameController.text,
+      username: _usernameController.text.trim(),
       password: _passwordController.text,
     );
 
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
+
+    if (result.isSuccess) {
+      await _completeLoginWithAutoSync();
+      return;
+    }
 
     setState(() {
       _isLoading = false;
     });
 
-    if (result.isSuccess) {
-      Navigator.of(
-        context,
-      ).pushReplacement(MaterialPageRoute(builder: (_) => const HomeScreen()));
-    } else {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(result.message)));
-    }
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(result.message)));
   }
 
   Future<void> _loginWithKeycloak() async {
@@ -66,21 +116,22 @@ class _LoginScreenState extends State<LoginScreen> {
 
     final result = await _authService.loginWithKeycloak();
 
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
+
+    if (result.isSuccess) {
+      await _completeLoginWithAutoSync();
+      return;
+    }
 
     setState(() {
       _isLoading = false;
     });
 
-    if (result.isSuccess) {
-      Navigator.of(
-        context,
-      ).pushReplacement(MaterialPageRoute(builder: (_) => const HomeScreen()));
-    } else {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(result.message)));
-    }
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(result.message)));
   }
 
   @override
