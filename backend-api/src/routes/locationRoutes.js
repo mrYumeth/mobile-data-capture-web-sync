@@ -4,6 +4,20 @@ const { runWithTenant } = require('../utils/tenantContext');
 
 const router = express.Router();
 
+function requireWebAccess(req, res) {
+  const isAdmin = req.user?.role === 'admin';
+  const hasWebAccess = req.user?.accessWeb === true;
+
+  if (!isAdmin && !hasWebAccess) {
+    res.status(403).json({
+      message: 'Web application access is required',
+    });
+    return false;
+  }
+
+  return true;
+}
+
 function requireAdmin(req, res) {
   if (req.user?.role !== 'admin') {
     res.status(403).json({
@@ -42,9 +56,9 @@ router.get('/', async (req, res) => {
 });
 
 router.post('/', async (req, res) => {
-  if (!requireAdmin(req, res)) {
-    return;
-  }
+if (!requireWebAccess(req, res)) {
+  return;
+}
 
   try {
     const { name, address } = req.body;
@@ -78,9 +92,9 @@ router.post('/', async (req, res) => {
 });
 
 router.put('/:id', async (req, res) => {
-  if (!requireAdmin(req, res)) {
-    return;
-  }
+if (!requireWebAccess(req, res)) {
+  return;
+}
 
   try {
     const { id } = req.params;
@@ -143,9 +157,9 @@ router.put('/:id', async (req, res) => {
 });
 
 router.delete('/:id', async (req, res) => {
-  if (!requireAdmin(req, res)) {
-    return;
-  }
+if (!requireAdmin(req, res)) {
+  return;
+}
 
   try {
     const { id } = req.params;
