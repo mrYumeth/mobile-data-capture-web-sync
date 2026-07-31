@@ -309,73 +309,16 @@ async function sendUserInvitationEmail({
   setupLink,
   mobileAppDownloadUrl,
 }) {
-  if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
+  if (
+    !process.env.SMTP_HOST ||
+    !process.env.SMTP_USER ||
+    !process.env.SMTP_PASS
+  ) {
     return false;
   }
 
-      async function sendKeycloakAccountInformationEmail({
-      user,
-      mobileAppDownloadUrl,
-    }) {
-      if (
-        !process.env.SMTP_HOST ||
-        !process.env.SMTP_USER ||
-        !process.env.SMTP_PASS
-      ) {
-        return false;
-      }
-
-      const transporter = await createSmtpTransporter();
-      const accessList = [];
-
-      if (user.access_web) {
-        accessList.push(`Web application: ${getFrontendUrl()}`);
-      }
-
-      if (mobileAppDownloadUrl) {
-        accessList.push(`Mobile application download: ${mobileAppDownloadUrl}`);
-      }
-
-      const accessText =
-        accessList.length > 0
-          ? accessList.join('\n')
-          : 'No application links are currently configured.';
-
-      await transporter.sendMail({
-        from: process.env.EMAIL_FROM || process.env.SMTP_USER,
-        to: user.email,
-        subject: 'FieldSync application access details',
-        text: `Hello ${user.full_name || user.username},
-
-    Your FieldSync account has been created by your administrator.
-
-    Username: ${user.username}
-
-    You will receive a separate password setup email from FieldSync Identity Management. Open that email and use the provided link to create your password.
-
-    Application access:
-
-    ${accessText}
-
-    Mobile installation instructions:
-
-    1. Open the mobile application download link.
-    2. Download the app-release.apk file.
-    3. Allow installation from unknown sources when Android requests permission.
-    4. Install the application.
-    5. Log in using your FieldSync username and the password you created.
-
-    Only install the APK using the official FieldSync download link provided in this email.
-
-    Regards,
-    FieldSync Team`,
-      });
-
-      return true;
-    }
-
-const transporter = await createSmtpTransporter();
-const accessList = [];
+  const transporter = await createSmtpTransporter();
+  const accessList = [];
 
   if (user.access_web) {
     accessList.push(`Web App Access: ${getFrontendUrl()}`);
@@ -385,7 +328,10 @@ const accessList = [];
     accessList.push(`Mobile App Download: ${mobileAppDownloadUrl}`);
   }
 
-  const accessText = accessList.length > 0 ? accessList.join('\n') : 'No app link configured.';
+  const accessText =
+    accessList.length > 0
+      ? accessList.join('\n')
+      : 'No app link configured.';
 
   await transporter.sendMail({
     from: process.env.EMAIL_FROM || process.env.SMTP_USER,
@@ -404,6 +350,68 @@ Access details:
 ${accessText}
 
 For security reasons, your password is not sent by email. You must set your own password using the setup link.
+
+Regards,
+FieldSync Team`,
+  });
+
+  return true;
+}
+
+async function sendKeycloakAccountInformationEmail({
+  user,
+  mobileAppDownloadUrl,
+}) {
+  if (
+    !process.env.SMTP_HOST ||
+    !process.env.SMTP_USER ||
+    !process.env.SMTP_PASS
+  ) {
+    return false;
+  }
+
+  const transporter = await createSmtpTransporter();
+  const accessList = [];
+
+  if (user.access_web) {
+    accessList.push(`Web application: ${getFrontendUrl()}`);
+  }
+
+  if (user.access_mobile && mobileAppDownloadUrl) {
+    accessList.push(
+      `Mobile application download: ${mobileAppDownloadUrl}`
+    );
+  }
+
+  const accessText =
+    accessList.length > 0
+      ? accessList.join('\n')
+      : 'No application links are currently configured.';
+
+  await transporter.sendMail({
+    from: process.env.EMAIL_FROM || process.env.SMTP_USER,
+    to: user.email,
+    subject: 'FieldSync application access details',
+    text: `Hello ${user.full_name || user.username},
+
+Your FieldSync account has been created by your administrator.
+
+Username: ${user.username}
+
+You will receive a separate password setup email from FieldSync Identity Management. Open that email and use the provided link to create your password.
+
+Application access:
+${accessText}
+
+Mobile installation instructions:
+
+1. Open the mobile application download link.
+2. Download the app-release.apk file.
+3. Allow installation from unknown sources when Android requests permission.
+4. Install the application.
+5. Log in using your FieldSync username and the password you created.
+
+Only install the APK using the official FieldSync download link provided in this email.
 
 Regards,
 FieldSync Team`,
