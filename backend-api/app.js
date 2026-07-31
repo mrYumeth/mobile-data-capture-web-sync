@@ -313,6 +313,67 @@ async function sendUserInvitationEmail({
     return false;
   }
 
+      async function sendKeycloakAccountInformationEmail({
+      user,
+      mobileAppDownloadUrl,
+    }) {
+      if (
+        !process.env.SMTP_HOST ||
+        !process.env.SMTP_USER ||
+        !process.env.SMTP_PASS
+      ) {
+        return false;
+      }
+
+      const transporter = await createSmtpTransporter();
+      const accessList = [];
+
+      if (user.access_web) {
+        accessList.push(`Web application: ${getFrontendUrl()}`);
+      }
+
+      if (mobileAppDownloadUrl) {
+        accessList.push(`Mobile application download: ${mobileAppDownloadUrl}`);
+      }
+
+      const accessText =
+        accessList.length > 0
+          ? accessList.join('\n')
+          : 'No application links are currently configured.';
+
+      await transporter.sendMail({
+        from: process.env.EMAIL_FROM || process.env.SMTP_USER,
+        to: user.email,
+        subject: 'FieldSync application access details',
+        text: `Hello ${user.full_name || user.username},
+
+    Your FieldSync account has been created by your administrator.
+
+    Username: ${user.username}
+
+    You will receive a separate password setup email from FieldSync Identity Management. Open that email and use the provided link to create your password.
+
+    Application access:
+
+    ${accessText}
+
+    Mobile installation instructions:
+
+    1. Open the mobile application download link.
+    2. Download the app-release.apk file.
+    3. Allow installation from unknown sources when Android requests permission.
+    4. Install the application.
+    5. Log in using your FieldSync username and the password you created.
+
+    Only install the APK using the official FieldSync download link provided in this email.
+
+    Regards,
+    FieldSync Team`,
+      });
+
+      return true;
+    }
+
 const transporter = await createSmtpTransporter();
 const accessList = [];
 
@@ -1081,6 +1142,21 @@ app.post('/api/admin/users', authenticateToken, requireAdmin, async (req, res) =
       }
     }
 
+      if (keycloakAuthEnabled) {
+    try {
+      emailSent = await sendKeycloakAccountInformationEmail({
+        user,
+        mobileAppDownloadUrl,
+      });
+    } catch (emailError) {
+      emailSent = false;
+      console.error(
+        'Failed to send FieldSync account information email:',
+        emailError.message
+      );
+    }
+  }
+
     if (!keycloakAuthEnabled) {
       try {
         emailSent = await sendUserInvitationEmail({
@@ -1098,9 +1174,13 @@ app.post('/api/admin/users', authenticateToken, requireAdmin, async (req, res) =
       message: keycloakAuthEnabled
         ? keycloakTemporaryPassword
           ? 'User created in FieldSync and Keycloak. Temporary password generated.'
+        : keycloakInviteSent && emailSent
+          ? 'User created successfully. Password setup and application access emails were sent.'
           : keycloakInviteSent
-            ? 'User created in FieldSync and Keycloak. Keycloak setup email sent.'
-            : 'User created in FieldSync and Keycloak. Keycloak setup email was not sent.'
+            ? 'User created successfully. Password setup email was sent, but the application access email was not sent.'
+            : emailSent
+              ? 'User created successfully. Application access email was sent, but the password setup email was not sent.'
+              : 'User created successfully, but the invitation emails were not sent.'
         : emailSent
           ? 'User created and setup email sent successfully'
           : 'User created. Email was not sent because SMTP is not configured or failed.',
