@@ -1,0 +1,150 @@
+services:
+
+  # =========================================================
+  # FieldSync Application PostgreSQL
+  # =========================================================
+  fieldsync-postgres:
+    image: postgres:17-alpine
+    container_name: fieldsync-postgres
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: ${FIELDSYNC_DB_NAME}
+      POSTGRES_USER: ${FIELDSYNC_DB_USER}
+      POSTGRES_PASSWORD: ${FIELDSYNC_DB_PASSWORD}
+
+    ports:
+      - "5434:5432"
+
+    volumes:
+      - fieldsync_postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${FIELDSYNC_DB_USER} -d ${FIELDSYNC_DB_NAME}"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+    networks:
+      - fieldsync-network
+
+
+  # =========================================================
+  # Keycloak PostgreSQL
+  # =========================================================
+  keycloak-postgres:
+    image: postgres:17-alpine
+    container_name: fieldsync-keycloak-postgres
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: ${KEYCLOAK_DB_NAME}
+      POSTGRES_USER: ${KEYCLOAK_DB_USER}
+      POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
+
+    ports:
+      - "5435:5432"
+
+    volumes:
+      - keycloak_postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${KEYCLOAK_DB_USER} -d ${KEYCLOAK_DB_NAME}"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+    networks:
+      - fieldsync-network
+
+
+  # =========================================================
+  # Local Keycloak
+  # =========================================================
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.7.0
+    container_name: fieldsync-keycloak
+    restart: unless-stopped
+
+    command:
+      - start-dev
+      - --import-realm
+
+
+    environment:
+      # Keycloak database connection
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak-postgres:5432/${KEYCLOAK_DB_NAME}
+      KC_DB_USERNAME: ${KEYCLOAK_DB_USER}
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
+
+      # Local Keycloak admin
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+
+      # Local development settings
+      KC_HTTP_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+
+    ports:
+      - "8080:8080"
+
+    volumes:
+      - ../keycloak-themes/fieldsync:/opt/keycloak/themes/fieldsync:ro
+      - ./keycloak-import/fieldsync-realm.json:/opt/keycloak/data/import/fieldsync-realm.json:ro
+
+    depends_on:
+      keycloak-postgres:
+        condition: service_healthy
+
+    networks:
+      - fieldsync-network
+
+
+  # =========================================================
+  # OpenBao - Local Secret Management
+  # =========================================================
+  openbao:
+    image: openbao/openbao:2.6.2
+    container_name: fieldsync-openbao
+    restart: unless-stopped
+
+    command:
+      - server
+      - -dev
+      - -dev-listen-address=0.0.0.0:8200
+      - -dev-root-token-id=${OPENBAO_DEV_ROOT_TOKEN}
+
+    environment:
+      BAO_ADDR: http://127.0.0.1:8200
+
+    ports:
+      - "8200:8200"
+
+    networks:
+      - fieldsync-network
+
+
+# =========================================================
+# Persistent Volumes
+# =========================================================
+volumes:
+  fieldsync_postgres_data:
+  keycloak_postgres_data:
+
+
+# =========================================================
+# Internal Docker Network
+# =========================================================
+networks:
+  fieldsync-network:
+    name: fieldsync-network
+

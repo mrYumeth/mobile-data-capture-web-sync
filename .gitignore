@@ -43,3 +43,6 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Local development generated files
+dev-environment/keycloak-import/fieldsync-realm.json
