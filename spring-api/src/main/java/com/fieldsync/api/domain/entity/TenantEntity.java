@@ -43,6 +43,10 @@ public class TenantEntity {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    public Integer getId() {
+    return id;
+}
+
     protected TenantEntity() {
     }
 }
