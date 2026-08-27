@@ -178,6 +178,78 @@ if ($LASTEXITCODE -ne 0) {
     throw "Unable to configure FieldSync Spring AppRole."
 }
 
+# ---------------------------------------------------------
+# Read FieldSync database credentials
+# ---------------------------------------------------------
+
+function Get-RequiredEnvValue {
+
+    param (
+        [string]$Key
+    )
+
+    $line = Get-Content $envPath |
+        Where-Object {
+            $_ -match "^$([regex]::Escape($Key))="
+        } |
+        Select-Object -First 1
+
+    if (-not $line) {
+        throw "$Key is missing from .env"
+    }
+
+    $value = $line.Substring(
+        $line.IndexOf("=") + 1
+    )
+
+    if ([string]::IsNullOrWhiteSpace($value)) {
+        throw "$Key is empty in .env"
+    }
+
+    return $value
+}
+
+
+$fieldsyncDbName =
+    Get-RequiredEnvValue "FIELDSYNC_DB_NAME"
+
+$fieldsyncDbUser =
+    Get-RequiredEnvValue "FIELDSYNC_DB_USER"
+
+$fieldsyncDbPassword =
+    Get-RequiredEnvValue "FIELDSYNC_DB_PASSWORD"
+
+
+# ---------------------------------------------------------
+# Store Spring datasource credentials in OpenBao
+# ---------------------------------------------------------
+
+Write-Host "Creating Spring datasource secret..."
+
+$datasourceSecretJson = @{
+    database = $fieldsyncDbName
+    username = $fieldsyncDbUser
+    password = $fieldsyncDbPassword
+} |
+    ConvertTo-Json -Compress
+
+
+$datasourceSecretJson |
+    docker exec `
+        -i `
+        -e BAO_TOKEN=$rootToken `
+        fieldsync-openbao `
+        bao kv put `
+        secret/fieldsync/local/spring-datasource `
+        - |
+    Out-Null
+
+if ($LASTEXITCODE -ne 0) {
+    throw "Unable to create Spring datasource secret."
+}
+
+Write-Host "Spring datasource secret created."
+
 
 # ---------------------------------------------------------
 # Create non-sensitive verification secret
@@ -361,8 +433,14 @@ Write-Host "OpenBao Agent credential files prepared."
 $rootToken = $null
 $secretId = $null
 
+$fieldsyncDbName = $null
+$fieldsyncDbUser = $null
+$fieldsyncDbPassword = $null
+$datasourceSecretJson = $null
+
 
 Write-Host ""
 Write-Host "FieldSync OpenBao initialization completed."
 Write-Host "AppRole credentials were stored in dev-environment/.env."
 Write-Host "No credentials were printed."  
+

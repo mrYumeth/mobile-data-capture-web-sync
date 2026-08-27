@@ -55,3 +55,36 @@ template {
 
   error_on_missing_key = true
 }
+
+# =========================================================
+# Spring Datasource Configuration
+# =========================================================
+
+template {
+
+  contents = "{{ with secret \"secret/fieldsync/local/spring-datasource\" }}jdbc:postgresql://localhost:5434/{{ .Data.data.database }}{{ end }}"
+
+  destination = "/openbao/rendered/spring/spring.datasource.url"
+
+  error_on_missing_key = true
+}
+
+
+template {
+
+  contents = "{{ with secret \"secret/fieldsync/local/spring-datasource\" }}{{ .Data.data.username }}{{ end }}"
+
+  destination = "/openbao/rendered/spring/spring.datasource.username"
+
+  error_on_missing_key = true
+}
+
+
+template {
+
+  contents = "{{ with secret \"secret/fieldsync/local/spring-datasource\" }}{{ .Data.data.password }}{{ end }}"
+
+  destination = "/openbao/rendered/spring/spring.datasource.password"
+
+  error_on_missing_key = true
+}
