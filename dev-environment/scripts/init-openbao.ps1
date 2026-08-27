@@ -295,6 +295,64 @@ Set-EnvValue `
     -Key "OPENBAO_SECRET_ID" `
     -Value $secretId
 
+# ---------------------------------------------------------
+# Create OpenBao Agent credential files
+# ---------------------------------------------------------
+
+Write-Host "Preparing OpenBao Agent credentials..."
+
+$agentCredentialDirectory = Join-Path `
+    $devEnvironmentPath `
+    "openbao\agent-credentials"
+
+New-Item `
+    -ItemType Directory `
+    -Force `
+    -Path $agentCredentialDirectory |
+    Out-Null
+
+
+$roleIdPath = Join-Path `
+    $agentCredentialDirectory `
+    "role_id"
+
+$secretIdPath = Join-Path `
+    $agentCredentialDirectory `
+    "secret_id"
+
+
+$utf8NoBom = New-Object `
+    System.Text.UTF8Encoding($false)
+
+
+[System.IO.File]::WriteAllText(
+    $roleIdPath,
+    $roleId,
+    $utf8NoBom
+)
+
+[System.IO.File]::WriteAllText(
+    $secretIdPath,
+    $secretId,
+    $utf8NoBom
+)
+
+# ---------------------------------------------------------
+# Prepare rendered-secret directory
+# ---------------------------------------------------------
+
+$renderedSecretDirectory = Join-Path `
+    $devEnvironmentPath `
+    "openbao\rendered"
+
+New-Item `
+    -ItemType Directory `
+    -Force `
+    -Path $renderedSecretDirectory |
+    Out-Null
+
+Write-Host "OpenBao Agent credential files prepared."
+
 
 # ---------------------------------------------------------
 # Clear sensitive variables
@@ -307,4 +365,4 @@ $secretId = $null
 Write-Host ""
 Write-Host "FieldSync OpenBao initialization completed."
 Write-Host "AppRole credentials were stored in dev-environment/.env."
-Write-Host "No credentials were printed."
+Write-Host "No credentials were printed."  

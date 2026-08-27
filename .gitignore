@@ -46,3 +46,7 @@ Thumbs.db
 
 # Local development generated files
 dev-environment/keycloak-import/fieldsync-realm.json
+
+# OpenBao Agent local generated credentials and rendered secrets
+dev-environment/openbao/agent-credentials/
+dev-environment/openbao/rendered/

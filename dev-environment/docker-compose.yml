@@ -132,6 +132,29 @@ services:
     networks:
       - fieldsync-network
 
+  # =========================================================
+  # OpenBao Agent - Spring Secret Delivery
+  # =========================================================
+  openbao-agent:
+    image: openbao/openbao:2.6.2
+    container_name: fieldsync-openbao-agent
+    restart: unless-stopped
+
+    command:
+      - agent
+      - -config=/openbao/config/agent-config.hcl
+
+    volumes:
+      - ./openbao/agent-config.hcl:/openbao/config/agent-config.hcl:ro
+      - ./openbao/agent-credentials:/openbao/credentials:ro
+      - ./openbao/rendered:/openbao/rendered
+
+    depends_on:
+      - openbao
+
+    networks:
+      - fieldsync-network
+      
 
 # =========================================================
 # Persistent Volumes

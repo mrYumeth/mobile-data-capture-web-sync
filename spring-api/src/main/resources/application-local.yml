@@ -29,3 +29,7 @@ spring:
 
 server:
   port: 8081
+
+fieldsync:
+  openbao:
+    verification-file: ${FIELDSYNC_OPENBAO_VERIFICATION_FILE:../dev-environment/openbao/rendered/verification.txt}
