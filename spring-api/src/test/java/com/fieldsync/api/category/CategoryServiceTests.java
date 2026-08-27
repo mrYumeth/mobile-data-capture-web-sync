@@ -1,0 +1,276 @@
+package com.fieldsync.api.category;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+
+import org.springframework.jdbc.core.JdbcTemplate;
+
+import org.springframework.security.core.context
+    .SecurityContextHolder;
+
+import org.springframework.security.oauth2.jwt.Jwt;
+
+import org.springframework.security.oauth2.server.resource.authentication
+    .JwtAuthenticationToken;
+
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+@SpringBootTest
+@Transactional
+class CategoryServiceTests {
+
+    @Autowired
+    private CategoryService categoryService;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    @AfterEach
+    void clearSecurityContext() {
+
+        SecurityContextHolder
+            .clearContext();
+    }
+
+    @Test
+    void shouldReturnOnlyActiveCategoriesForAuthenticatedTenant() {
+
+        String suffix =
+            UUID.randomUUID()
+                .toString()
+                .replace("-", "");
+
+        Integer tenantA =
+            createTenant(
+                "tenant-a-" + suffix
+            );
+
+        Integer tenantB =
+            createTenant(
+                "tenant-b-" + suffix
+            );
+
+        String keycloakUserId =
+            UUID.randomUUID()
+                .toString();
+
+        String email =
+            "tenant-a-" +
+            suffix +
+            "@example.test";
+
+        createUser(
+            tenantA,
+            "user-" + suffix,
+            email,
+            keycloakUserId
+        );
+
+        createCategory(
+            tenantA,
+            "Tenant A First",
+            true
+        );
+
+        createCategory(
+            tenantA,
+            "Tenant A Second",
+            true
+        );
+
+        createCategory(
+            tenantA,
+            "Tenant A Inactive",
+            false
+        );
+
+        createCategory(
+            tenantB,
+            "Tenant B Category",
+            true
+        );
+
+        authenticate(
+            keycloakUserId,
+            email
+        );
+
+        List<CategoryResponse> categories =
+            categoryService
+                .getActiveCategories();
+
+        assertThat(categories)
+            .extracting(
+                CategoryResponse::name
+            )
+            .containsExactly(
+                "Tenant A Second",
+                "Tenant A First"
+            );
+
+        assertThat(categories)
+            .allMatch(
+                category ->
+                    category
+                        .tenant_id()
+                        .equals(tenantA)
+            );
+    }
+
+
+    private Integer createTenant(
+            String slug
+    ) {
+
+        return jdbcTemplate.queryForObject(
+            """
+            INSERT INTO tenants (
+                name,
+                slug
+            )
+            VALUES (?, ?)
+            RETURNING id
+            """,
+            Integer.class,
+            "Test Tenant",
+            slug
+        );
+    }
+
+
+    private void createUser(
+            Integer tenantId,
+            String username,
+            String email,
+            String keycloakUserId
+    ) {
+
+        jdbcTemplate.update(
+            """
+            INSERT INTO users (
+                username,
+                password_hash,
+                full_name,
+                role,
+                is_active,
+                email,
+                access_web,
+                access_mobile,
+                password_change_required,
+                tenant_id,
+                keycloak_user_id
+            )
+            VALUES (
+                ?,
+                'test-only-placeholder',
+                'Test User',
+                'user',
+                TRUE,
+                ?,
+                TRUE,
+                FALSE,
+                FALSE,
+                ?,
+                ?
+            )
+            """,
+
+            username,
+            email,
+            tenantId,
+            keycloakUserId
+        );
+    }
+
+
+    private void createCategory(
+            Integer tenantId,
+            String name,
+            boolean active
+    ) {
+
+        jdbcTemplate.update(
+            """
+            INSERT INTO categories (
+                tenant_id,
+                name,
+                description,
+                is_active
+            )
+            VALUES (
+                ?,
+                ?,
+                'Test category',
+                ?
+            )
+            """,
+
+            tenantId,
+            name,
+            active
+        );
+    }
+
+
+    private void authenticate(
+            String keycloakUserId,
+            String email
+    ) {
+
+        Instant now =
+            Instant.now();
+
+        Jwt jwt =
+            Jwt.withTokenValue(
+                    "test-token"
+                )
+                .header(
+                    "alg",
+                    "RS256"
+                )
+                .subject(
+                    keycloakUserId
+                )
+                .claim(
+                    "email",
+                    email
+                )
+                .claim(
+                    "azp",
+                    "fieldsync-web"
+                )
+
+                // Must never control tenant isolation.
+                .claim(
+                    "tenantId",
+                    999999
+                )
+
+                .issuedAt(now)
+                .expiresAt(
+                    now.plusSeconds(300)
+                )
+                .build();
+
+                JwtAuthenticationToken authentication =
+                    new JwtAuthenticationToken(
+                        jwt,
+                        List.of()
+                    );
+
+        SecurityContextHolder
+            .getContext()
+            .setAuthentication(
+                authentication
+            );
+    }
+}

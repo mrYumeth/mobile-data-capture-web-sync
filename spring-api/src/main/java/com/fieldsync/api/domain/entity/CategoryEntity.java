@@ -45,6 +45,34 @@ public class CategoryEntity {
     )
     private TenantEntity tenant;
 
+    public Integer getId() {
+    return id;
+}
+
+public String getName() {
+    return name;
+}
+
+public String getDescription() {
+    return description;
+}
+
+public Boolean getActive() {
+    return active;
+}
+
+public LocalDateTime getCreatedAt() {
+    return createdAt;
+}
+
+public LocalDateTime getUpdatedAt() {
+    return updatedAt;
+}
+
+public TenantEntity getTenant() {
+    return tenant;
+}
+
     protected CategoryEntity() {
     }
 }

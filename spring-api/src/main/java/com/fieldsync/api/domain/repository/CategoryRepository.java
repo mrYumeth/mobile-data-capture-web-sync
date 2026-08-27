@@ -17,4 +17,9 @@ public interface CategoryRepository
         Integer id,
         Integer tenantId
     );
+
+    List<CategoryEntity>
+findAllByTenant_IdAndActiveTrueOrderByIdDesc(
+    Integer tenantId
+);
 }
