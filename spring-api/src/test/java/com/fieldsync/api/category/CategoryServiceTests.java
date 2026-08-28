@@ -13,9 +13,7 @@ import org.springframework.security.core.context
 
 import org.springframework.security.oauth2.jwt.Jwt;
 
-import org.springframework.security.oauth2.server.resource.authentication
-    .JwtAuthenticationToken;
-
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
@@ -23,6 +21,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fieldsync.api.tenant.TenantContextExecutor;
 
@@ -77,7 +76,9 @@ class CategoryServiceTests {
             tenantA,
             "user-" + suffix,
             email,
-            keycloakUserId
+            keycloakUserId,
+            "user",
+            true
         );
 
         createCategory(
@@ -131,6 +132,198 @@ class CategoryServiceTests {
             );
     }
 
+    @Test
+void shouldCreateCategoryForAuthenticatedTenant() {
+
+    TestContext context =
+        createAuthenticatedUser(
+            "user",
+            true
+        );
+
+    CategoryResponse created =
+        categoryService.createCategory(
+            new CategoryRequest(
+                "  New Category  ",
+                "Description"
+            )
+        );
+
+    assertThat(created.name())
+        .isEqualTo("New Category");
+
+    assertThat(created.tenant_id())
+        .isEqualTo(context.tenantId());
+
+    assertThat(created.is_active())
+        .isTrue();
+}
+
+
+@Test
+void shouldUpdateOnlyCategoryFromAuthenticatedTenant() {
+
+    TestContext context =
+        createAuthenticatedUser(
+            "user",
+            true
+        );
+
+    Integer categoryId =
+        createCategoryAndReturnId(
+            context.tenantId(),
+            "Old Category"
+        );
+
+    CategoryResponse updated =
+        categoryService.updateCategory(
+            categoryId,
+            new CategoryRequest(
+                "Updated Category",
+                "Updated description"
+            )
+        );
+
+    assertThat(updated.name())
+        .isEqualTo(
+            "Updated Category"
+        );
+}
+
+
+@Test
+void shouldAllowAdminToDeleteCategory() {
+
+    TestContext context =
+        createAuthenticatedUser(
+            "admin",
+            true
+        );
+
+    Integer categoryId =
+        createCategoryAndReturnId(
+            context.tenantId(),
+            "Delete Category"
+        );
+
+    CategoryDeleteResponse response =
+        categoryService.deleteCategory(
+            categoryId
+        );
+
+    assertThat(response.message())
+        .isEqualTo(
+            "Category deleted successfully"
+        );
+}
+
+
+@Test
+void shouldRejectDeleteForNonAdminUser() {
+
+    TestContext context =
+        createAuthenticatedUser(
+            "user",
+            true
+        );
+
+    Integer categoryId =
+        createCategoryAndReturnId(
+            context.tenantId(),
+            "Protected Category"
+        );
+
+    assertThatThrownBy(
+        () ->
+            categoryService
+                .deleteCategory(
+                    categoryId
+                )
+    )
+    .isInstanceOf(
+        CategoryApiException.class
+    )
+    .hasMessage(
+        "Admin access is required"
+    );
+}
+
+private TestContext createAuthenticatedUser(
+        String role,
+        boolean accessWeb
+) {
+
+    String suffix =
+        UUID.randomUUID()
+            .toString()
+            .replace("-", "");
+
+    Integer tenantId =
+        createTenant(
+            "crud-" + suffix
+        );
+
+    String keycloakUserId =
+        UUID.randomUUID()
+            .toString();
+
+    String email =
+        "crud-" +
+        suffix +
+        "@example.test";
+
+    createUser(
+        tenantId,
+        "crud-user-" + suffix,
+        email,
+        keycloakUserId,
+        role,
+        accessWeb
+    );
+
+    authenticate(
+        keycloakUserId,
+        email
+    );
+
+    return new TestContext(
+        tenantId,
+        keycloakUserId,
+        email
+    );
+}
+
+private Integer createCategoryAndReturnId(
+        Integer tenantId,
+        String name
+) {
+
+    return tenantContextExecutor.execute(
+        tenantId,
+        () ->
+            jdbcTemplate.queryForObject(
+                """
+                INSERT INTO categories (
+                    tenant_id,
+                    name,
+                    description,
+                    is_active
+                )
+                VALUES (
+                    ?,
+                    ?,
+                    'CRUD test category',
+                    TRUE
+                )
+                RETURNING id
+                """,
+                Integer.class,
+                tenantId,
+                name
+            )
+    );
+}
+
 
     private Integer createTenant(
             String slug
@@ -153,48 +346,52 @@ class CategoryServiceTests {
 
 
     private void createUser(
-            Integer tenantId,
-            String username,
-            String email,
-            String keycloakUserId
-    ) {
+        Integer tenantId,
+        String username,
+        String email,
+        String keycloakUserId,
+        String role,
+        boolean accessWeb
+) {
 
-        jdbcTemplate.update(
-            """
-            INSERT INTO users (
-                username,
-                password_hash,
-                full_name,
-                role,
-                is_active,
-                email,
-                access_web,
-                access_mobile,
-                password_change_required,
-                tenant_id,
-                keycloak_user_id
-            )
-            VALUES (
-                ?,
-                'test-only-placeholder',
-                'Test User',
-                'user',
-                TRUE,
-                ?,
-                TRUE,
-                FALSE,
-                FALSE,
-                ?,
-                ?
-            )
-            """,
-
+    jdbcTemplate.update(
+        """
+        INSERT INTO users (
             username,
+            password_hash,
+            full_name,
+            role,
+            is_active,
             email,
-            tenantId,
-            keycloakUserId
-        );
-    }
+            access_web,
+            access_mobile,
+            password_change_required,
+            tenant_id,
+            keycloak_user_id
+        )
+        VALUES (
+            ?,
+            'test-only-placeholder',
+            'Test User',
+            ?,
+            TRUE,
+            ?,
+            ?,
+            FALSE,
+            FALSE,
+            ?,
+            ?
+        )
+        """,
+
+        username,
+        role,
+        email,
+        accessWeb,
+        tenantId,
+        keycloakUserId
+    );
+}
 
 
         private void createCategory(
@@ -281,5 +478,17 @@ class CategoryServiceTests {
             .setAuthentication(
                 authentication
             );
+            
     }
+
+    private record TestContext(
+
+    Integer tenantId,
+    String keycloakUserId,
+    String email
+
+) {
 }
+    
+}
+

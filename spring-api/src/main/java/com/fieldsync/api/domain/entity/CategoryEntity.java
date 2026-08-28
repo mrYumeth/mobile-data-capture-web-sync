@@ -73,6 +73,40 @@ public TenantEntity getTenant() {
     return tenant;
 }
 
+public static CategoryEntity create(
+        TenantEntity tenant,
+        String name,
+        String description
+) {
+
+    CategoryEntity category =
+        new CategoryEntity();
+
+    LocalDateTime now =
+        LocalDateTime.now();
+
+    category.tenant = tenant;
+    category.name = name;
+    category.description = description;
+    category.active = true;
+    category.createdAt = now;
+    category.updatedAt = now;
+
+    return category;
+}
+
+
+public void update(
+        String name,
+        String description
+) {
+
+    this.name = name;
+    this.description = description;
+    this.updatedAt =
+        LocalDateTime.now();
+}
+
     protected CategoryEntity() {
     }
 }
