@@ -82,6 +82,62 @@ public class CapturedRecordEntity {
     )
     private TenantEntity tenant;
 
+    public Integer getId() {
+    return id;
+}
+
+    public CustomerEntity getCustomer() {
+        return customer;
+    }
+
+    public LocationEntity getLocation() {
+        return location;
+    }
+
+    public CategoryEntity getCategory() {
+        return category;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public BigDecimal getLatitude() {
+        return latitude;
+    }
+
+    public BigDecimal getLongitude() {
+        return longitude;
+    }
+
+    public String getImageUrl() {
+        return imageUrl;
+    }
+
+    public String getImagePath() {
+        return imagePath;
+    }
+
+    public LocalDateTime getCapturedAt() {
+        return capturedAt;
+    }
+
+    public LocalDateTime getReceivedAt() {
+        return receivedAt;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public TenantEntity getTenant() {
+        return tenant;
+    }
+
     protected CapturedRecordEntity() {
     }
 }

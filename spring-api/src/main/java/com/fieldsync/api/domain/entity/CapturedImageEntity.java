@@ -49,6 +49,30 @@ public class CapturedImageEntity {
     )
     private TenantEntity tenant;
 
+    public Integer getId() {
+    return id;
+}
+
+    public CapturedRecordEntity getCapturedRecord() {
+        return capturedRecord;
+    }
+
+    public String getImageUrl() {
+        return imageUrl;
+    }
+
+    public String getStoragePath() {
+        return storagePath;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public TenantEntity getTenant() {
+        return tenant;
+    }
+
     protected CapturedImageEntity() {
     }
 }
