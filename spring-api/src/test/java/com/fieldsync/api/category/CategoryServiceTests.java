@@ -24,6 +24,8 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fieldsync.api.tenant.TenantContextExecutor;
+
 @SpringBootTest
 @Transactional
 class CategoryServiceTests {
@@ -33,6 +35,9 @@ class CategoryServiceTests {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private TenantContextExecutor tenantContextExecutor;
 
     @AfterEach
     void clearSecurityContext() {
@@ -192,31 +197,35 @@ class CategoryServiceTests {
     }
 
 
-    private void createCategory(
+        private void createCategory(
             Integer tenantId,
             String name,
             boolean active
     ) {
 
-        jdbcTemplate.update(
-            """
-            INSERT INTO categories (
-                tenant_id,
-                name,
-                description,
-                is_active
-            )
-            VALUES (
-                ?,
-                ?,
-                'Test category',
-                ?
-            )
-            """,
-
+        tenantContextExecutor.execute(
             tenantId,
-            name,
-            active
+            () ->
+                jdbcTemplate.update(
+                    """
+                    INSERT INTO categories (
+                        tenant_id,
+                        name,
+                        description,
+                        is_active
+                    )
+                    VALUES (
+                        ?,
+                        ?,
+                        'Test category',
+                        ?
+                    )
+                    """,
+
+                    tenantId,
+                    name,
+                    active
+                )
         );
     }
 
