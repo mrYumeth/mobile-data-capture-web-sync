@@ -209,6 +209,36 @@ function Get-RequiredEnvValue {
     return $value
 }
 
+function Get-OptionalEnvValue {
+
+    param (
+        [string]$Key,
+        [string]$DefaultValue = ""
+    )
+
+    $line =
+        Get-Content $envPath |
+        Where-Object {
+            $_ -match "^$([regex]::Escape($Key))="
+        } |
+        Select-Object -First 1
+
+    if (-not $line) {
+        return $DefaultValue
+    }
+
+    $value =
+        $line.Substring(
+            $line.IndexOf("=") + 1
+        )
+
+    if ([string]::IsNullOrWhiteSpace($value)) {
+        return $DefaultValue
+    }
+
+    return $value
+}
+
 
 $fieldsyncDbName =
     Get-RequiredEnvValue "FIELDSYNC_DB_NAME"
@@ -224,6 +254,44 @@ $fieldsyncRuntimeDbUser =
 
 $fieldsyncRuntimeDbPassword =
     Get-RequiredEnvValue "FIELDSYNC_RUNTIME_DB_PASSWORD"
+
+$supabaseUrl =
+    Get-OptionalEnvValue `
+        "SUPABASE_URL"
+
+$supabaseServiceRoleKey =
+    Get-OptionalEnvValue `
+        "SUPABASE_SERVICE_ROLE_KEY"
+
+$supabaseStorageBucket =
+    Get-OptionalEnvValue `
+        "SUPABASE_STORAGE_BUCKET" `
+        "captured-images"
+
+$supabaseSignedUrlExpiresIn =
+    Get-OptionalEnvValue `
+        "SUPABASE_SIGNED_URL_EXPIRES_IN" `
+        "3600"
+
+
+$supabaseSignedUrlExpiresIn =
+    $supabaseSignedUrlExpiresIn.Trim()
+
+$parsedSignedUrlExpiresIn = 0
+
+if (
+    -not [int]::TryParse(
+        $supabaseSignedUrlExpiresIn,
+        [ref]$parsedSignedUrlExpiresIn
+    ) -or
+    $parsedSignedUrlExpiresIn -le 0
+) {
+
+    throw "SUPABASE_SIGNED_URL_EXPIRES_IN must be a positive integer."
+}
+
+$supabaseSignedUrlExpiresIn =
+    $parsedSignedUrlExpiresIn.ToString()
 
 
 # ---------------------------------------------------------
@@ -285,6 +353,50 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host "Spring Flyway secret created."
+
+
+# ---------------------------------------------------------
+# Store Spring image storage configuration in OpenBao
+# ---------------------------------------------------------
+
+Write-Host "Creating Spring image storage secret..."
+
+$storageSecretJson = @{
+
+    url =
+        $supabaseUrl
+
+    service_role_key =
+        $supabaseServiceRoleKey
+
+    bucket =
+        $supabaseStorageBucket
+
+    signed_url_expires_in =
+        $supabaseSignedUrlExpiresIn
+
+} |
+    ConvertTo-Json -Compress
+
+
+$storageSecretJson |
+    docker exec `
+        -i `
+        -e BAO_TOKEN=$rootToken `
+        fieldsync-openbao `
+        bao kv put `
+        secret/fieldsync/local/spring-storage `
+        - |
+    Out-Null
+
+
+if ($LASTEXITCODE -ne 0) {
+
+    throw "Unable to create Spring image storage secret."
+}
+
+
+Write-Host "Spring image storage secret created."
 
 
 # ---------------------------------------------------------

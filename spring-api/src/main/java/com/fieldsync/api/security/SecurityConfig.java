@@ -31,7 +31,8 @@ public class SecurityConfig {
                 authorize
                     .requestMatchers(
                         "/actuator/health",
-                        "/actuator/info"
+                        "/actuator/info",
+                        "/uploads/**"
                     )
                     .permitAll()
 

@@ -122,3 +122,46 @@ template {
 
   error_on_missing_key = true
 }
+
+# =========================================================
+# Spring Image Storage Configuration
+# =========================================================
+
+template {
+
+  contents = "{{ with secret \"secret/fieldsync/local/spring-storage\" }}{{ .Data.data.url }}{{ end }}"
+
+  destination = "/openbao/rendered/spring/fieldsync.storage.supabase.url"
+
+  error_on_missing_key = true
+}
+
+
+template {
+
+  contents = "{{ with secret \"secret/fieldsync/local/spring-storage\" }}{{ .Data.data.service_role_key }}{{ end }}"
+
+  destination = "/openbao/rendered/spring/fieldsync.storage.supabase.service-role-key"
+
+  error_on_missing_key = true
+}
+
+
+template {
+
+  contents = "{{ with secret \"secret/fieldsync/local/spring-storage\" }}{{ .Data.data.bucket }}{{ end }}"
+
+  destination = "/openbao/rendered/spring/fieldsync.storage.supabase.bucket"
+
+  error_on_missing_key = true
+}
+
+
+template {
+
+  contents = "{{ with secret \"secret/fieldsync/local/spring-storage\" }}{{ .Data.data.signed_url_expires_in }}{{ end }}"
+
+  destination = "/openbao/rendered/spring/fieldsync.storage.supabase.signed-url-expires-in"
+
+  error_on_missing_key = true
+}

@@ -14,6 +14,8 @@ import com.fieldsync.api.tenant.TenantContextExecutor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
+import com.fieldsync.api.storage.ImageStorageService;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -34,13 +36,17 @@ public class CapturedRecordService {
 
     private final TenantContextExecutor
         tenantContextExecutor;
+    
+    private final ImageStorageService
+    imageStorageService;    
 
 
     public CapturedRecordService(
             CapturedRecordRepository capturedRecordRepository,
             CapturedImageRepository capturedImageRepository,
             CurrentUserService currentUserService,
-            TenantContextExecutor tenantContextExecutor
+            TenantContextExecutor tenantContextExecutor,
+            ImageStorageService imageStorageService
     ) {
 
         this.capturedRecordRepository =
@@ -54,6 +60,9 @@ public class CapturedRecordService {
 
         this.tenantContextExecutor =
             tenantContextExecutor;
+
+        this.imageStorageService =
+            imageStorageService;
     }
 
 
@@ -180,10 +189,12 @@ public class CapturedRecordService {
 
 
             String fullImageUrl =
-                resolveBasicImageUrl(
-                    baseUrl,
-                    image.getImageUrl()
-                );
+                imageStorageService
+                    .resolveImageUrl(
+                        image.getImageUrl(),
+                        image.getStoragePath(),
+                        baseUrl
+                    );
 
 
             CapturedImageResponse response =
@@ -235,10 +246,12 @@ public class CapturedRecordService {
 
             if (fullImageUrl == null) {
 
-                fullImageUrl =
-                    resolveBasicImageUrl(
-                        baseUrl,
-                        record.getImageUrl()
+            fullImageUrl =
+                imageStorageService
+                    .resolveImageUrl(
+                        record.getImageUrl(),
+                        record.getImagePath(),
+                        baseUrl
                     );
             }
 
@@ -255,41 +268,5 @@ public class CapturedRecordService {
 
         return responses;
     }
-
-
-    private String resolveBasicImageUrl(
-            String baseUrl,
-            String imageUrl
-    ) {
-
-        if (
-            imageUrl == null ||
-            imageUrl.isBlank()
-        ) {
-            return null;
-        }
-
-
-        if (
-            imageUrl.startsWith(
-                "http://"
-            ) ||
-            imageUrl.startsWith(
-                "https://"
-            )
-        ) {
-            return imageUrl;
-        }
-
-
-        if (
-            baseUrl == null ||
-            baseUrl.isBlank()
-        ) {
-            return imageUrl;
-        }
-
-
-        return baseUrl + imageUrl;
-    }
+    
 }
