@@ -88,3 +88,37 @@ template {
 
   error_on_missing_key = true
 }
+
+
+# =========================================================
+# Spring Flyway Configuration
+# =========================================================
+
+template {
+
+  contents = "{{ with secret \"secret/fieldsync/local/spring-flyway\" }}jdbc:postgresql://localhost:5434/{{ .Data.data.database }}{{ end }}"
+
+  destination = "/openbao/rendered/spring/spring.flyway.url"
+
+  error_on_missing_key = true
+}
+
+
+template {
+
+  contents = "{{ with secret \"secret/fieldsync/local/spring-flyway\" }}{{ .Data.data.username }}{{ end }}"
+
+  destination = "/openbao/rendered/spring/spring.flyway.user"
+
+  error_on_missing_key = true
+}
+
+
+template {
+
+  contents = "{{ with secret \"secret/fieldsync/local/spring-flyway\" }}{{ .Data.data.password }}{{ end }}"
+
+  destination = "/openbao/rendered/spring/spring.flyway.password"
+
+  error_on_missing_key = true
+}

@@ -219,6 +219,12 @@ $fieldsyncDbUser =
 $fieldsyncDbPassword =
     Get-RequiredEnvValue "FIELDSYNC_DB_PASSWORD"
 
+$fieldsyncRuntimeDbUser =
+    Get-RequiredEnvValue "FIELDSYNC_RUNTIME_DB_USER"
+
+$fieldsyncRuntimeDbPassword =
+    Get-RequiredEnvValue "FIELDSYNC_RUNTIME_DB_PASSWORD"
+
 
 # ---------------------------------------------------------
 # Store Spring datasource credentials in OpenBao
@@ -228,8 +234,8 @@ Write-Host "Creating Spring datasource secret..."
 
 $datasourceSecretJson = @{
     database = $fieldsyncDbName
-    username = $fieldsyncDbUser
-    password = $fieldsyncDbPassword
+    username = $fieldsyncRuntimeDbUser
+    password = $fieldsyncRuntimeDbPassword
 } |
     ConvertTo-Json -Compress
 
@@ -249,6 +255,36 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host "Spring datasource secret created."
+
+# ---------------------------------------------------------
+# Store Flyway migration credentials in OpenBao
+# ---------------------------------------------------------
+
+Write-Host "Creating Spring Flyway secret..."
+
+$flywaySecretJson = @{
+    database = $fieldsyncDbName
+    username = $fieldsyncDbUser
+    password = $fieldsyncDbPassword
+} |
+    ConvertTo-Json -Compress
+
+
+$flywaySecretJson |
+    docker exec `
+        -i `
+        -e BAO_TOKEN=$rootToken `
+        fieldsync-openbao `
+        bao kv put `
+        secret/fieldsync/local/spring-flyway `
+        - |
+    Out-Null
+
+if ($LASTEXITCODE -ne 0) {
+    throw "Unable to create Spring Flyway secret."
+}
+
+Write-Host "Spring Flyway secret created."
 
 
 # ---------------------------------------------------------
@@ -436,6 +472,11 @@ $secretId = $null
 $fieldsyncDbName = $null
 $fieldsyncDbUser = $null
 $fieldsyncDbPassword = $null
+
+$fieldsyncRuntimeDbUser = $null
+$fieldsyncRuntimeDbPassword = $null
+$flywaySecretJson = $null
+
 $datasourceSecretJson = $null
 
 
