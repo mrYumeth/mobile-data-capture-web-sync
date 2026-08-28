@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
 
+
 @Entity
 @Table(name = "locations")
 @SequenceGenerator(
@@ -44,6 +45,71 @@ public class LocationEntity {
         nullable = false
     )
     private TenantEntity tenant;
+
+
+    public Integer getId() {
+        return id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public String getAddress() {
+        return address;
+    }
+
+    public Boolean getActive() {
+        return active;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public TenantEntity getTenant() {
+        return tenant;
+    }
+
+
+    public static LocationEntity create(
+            TenantEntity tenant,
+            String name,
+            String address
+    ) {
+
+        LocationEntity location =
+            new LocationEntity();
+
+        LocalDateTime now =
+            LocalDateTime.now();
+
+        location.tenant = tenant;
+        location.name = name;
+        location.address = address;
+        location.active = true;
+        location.createdAt = now;
+        location.updatedAt = now;
+
+        return location;
+    }
+
+
+    public void update(
+            String name,
+            String address
+    ) {
+
+        this.name = name;
+        this.address = address;
+        this.updatedAt =
+            LocalDateTime.now();
+    }
+
 
     protected LocationEntity() {
     }
