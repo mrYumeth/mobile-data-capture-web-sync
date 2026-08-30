@@ -165,3 +165,17 @@ template {
 
   error_on_missing_key = true
 }
+
+
+# =========================================================
+# Spring Keycloak Admin API Configuration
+# =========================================================
+
+template {
+
+  contents = "{{ with secret \"secret/fieldsync/local/keycloak-admin\" }}{{ .Data.data.client_secret }}{{ end }}"
+
+  destination = "/openbao/rendered/spring/fieldsync.keycloak.admin.client-secret"
+
+  error_on_missing_key = true
+}

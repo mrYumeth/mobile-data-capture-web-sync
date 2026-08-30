@@ -273,6 +273,9 @@ $supabaseSignedUrlExpiresIn =
         "SUPABASE_SIGNED_URL_EXPIRES_IN" `
         "3600"
 
+$keycloakAdminClientSecret =
+    Get-RequiredEnvValue `
+        "KEYCLOAK_ADMIN_CLIENT_SECRET"
 
 $supabaseSignedUrlExpiresIn =
     $supabaseSignedUrlExpiresIn.Trim()
@@ -397,6 +400,36 @@ if ($LASTEXITCODE -ne 0) {
 
 
 Write-Host "Spring image storage secret created."
+
+
+# ---------------------------------------------------------
+# Store Keycloak Admin API client secret in OpenBao
+# ---------------------------------------------------------
+
+Write-Host "Creating Keycloak Admin API secret..."
+
+$keycloakAdminSecretJson = @{
+    client_secret = $keycloakAdminClientSecret
+} |
+    ConvertTo-Json -Compress
+
+
+$keycloakAdminSecretJson |
+    docker exec `
+        -i `
+        -e BAO_TOKEN=$rootToken `
+        fieldsync-openbao `
+        bao kv put `
+        secret/fieldsync/local/keycloak-admin `
+        - |
+    Out-Null
+
+
+if ($LASTEXITCODE -ne 0) {
+    throw "Unable to create Keycloak Admin API secret."
+}
+
+Write-Host "Keycloak Admin API secret created."
 
 
 # ---------------------------------------------------------
@@ -590,6 +623,9 @@ $fieldsyncRuntimeDbPassword = $null
 $flywaySecretJson = $null
 
 $datasourceSecretJson = $null
+
+$keycloakAdminClientSecret = $null
+$keycloakAdminSecretJson = $null
 
 
 Write-Host ""

@@ -39,3 +39,10 @@ fieldsync:
 
     local:
       directory: ${FIELDSYNC_LOCAL_IMAGE_DIRECTORY:uploads/captured-images}
+
+  keycloak:
+
+    admin:
+      base-url: ${FIELDSYNC_KEYCLOAK_ADMIN_BASE_URL:http://localhost:8080}
+      realm: ${FIELDSYNC_KEYCLOAK_ADMIN_REALM:fieldsync}
+      client-id: ${FIELDSYNC_KEYCLOAK_ADMIN_CLIENT_ID:fieldsync-backend-admin}
