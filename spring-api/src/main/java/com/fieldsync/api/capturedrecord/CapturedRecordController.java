@@ -1,9 +1,14 @@
 package com.fieldsync.api.capturedrecord;
 
+import com.fieldsync.api.storage.ImageStorageException;
+
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 
 import org.springframework.web.bind.annotation.*;
+
+import org.springframework.web.multipart.MultipartFile;
 
 import org.springframework.web.servlet.support
     .ServletUriComponentsBuilder;
@@ -31,6 +36,10 @@ public class CapturedRecordController {
     }
 
 
+    // =====================================================
+    // Read
+    // =====================================================
+
     @GetMapping
     public List<CapturedRecordResponse>
     getCapturedRecords() {
@@ -56,6 +65,108 @@ public class CapturedRecordController {
     }
 
 
+    // =====================================================
+    // Create
+    // =====================================================
+
+    @PostMapping(
+        consumes =
+            MediaType.MULTIPART_FORM_DATA_VALUE
+    )
+    public ResponseEntity<CapturedRecordCreateResponse>
+    createCapturedRecord(
+
+            @RequestParam(
+                value = "customer_id",
+                required = false
+            )
+            String customerId,
+
+            @RequestParam(
+                value = "location_id",
+                required = false
+            )
+            String locationId,
+
+            @RequestParam(
+                value = "category_id",
+                required = false
+            )
+            String categoryId,
+
+            @RequestParam(
+                value = "description",
+                required = false
+            )
+            String description,
+
+            @RequestParam(
+                value = "latitude",
+                required = false
+            )
+            String latitude,
+
+            @RequestParam(
+                value = "longitude",
+                required = false
+            )
+            String longitude,
+
+            @RequestParam(
+                value = "captured_at",
+                required = false
+            )
+            String capturedAt,
+
+            @RequestParam(
+                value = "images",
+                required = false
+            )
+            List<MultipartFile> images,
+
+            @RequestParam(
+                value = "image",
+                required = false
+            )
+            MultipartFile legacyImage
+    ) {
+
+        CapturedRecordCreateRequest request =
+            new CapturedRecordCreateRequest(
+                customerId,
+                locationId,
+                categoryId,
+                description,
+                latitude,
+                longitude,
+                capturedAt
+            );
+
+
+        CapturedRecordCreateResponse response =
+            capturedRecordService
+                .createCapturedRecord(
+                    request,
+                    images,
+                    legacyImage,
+                    getBaseUrl()
+                );
+
+
+        return ResponseEntity
+            .status(
+                HttpStatus.CREATED
+            )
+            .body(
+                response
+            );
+    }
+
+
+    // =====================================================
+    // Error handling
+    // =====================================================
+
     @ExceptionHandler(
         CapturedRecordApiException.class
     )
@@ -76,6 +187,31 @@ public class CapturedRecordController {
             );
     }
 
+
+    @ExceptionHandler(
+        ImageStorageException.class
+    )
+    public ResponseEntity<Map<String, String>>
+    handleImageStorageException(
+            ImageStorageException exception
+    ) {
+
+        return ResponseEntity
+            .status(
+                HttpStatus.INTERNAL_SERVER_ERROR
+            )
+            .body(
+                Map.of(
+                    "message",
+                    "Failed to create captured record"
+                )
+            );
+    }
+
+
+    // =====================================================
+    // Helpers
+    // =====================================================
 
     private Integer parseRecordId(
             String id

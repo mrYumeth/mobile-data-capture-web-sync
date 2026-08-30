@@ -138,6 +138,48 @@ public class CapturedRecordEntity {
         return tenant;
     }
 
+    public static CapturedRecordEntity create(
+        TenantEntity tenant,
+        CustomerEntity customer,
+        LocationEntity location,
+        CategoryEntity category,
+        String description,
+        BigDecimal latitude,
+        BigDecimal longitude,
+        String imageUrl,
+        String imagePath,
+        LocalDateTime capturedAt
+) {
+
+    CapturedRecordEntity record =
+        new CapturedRecordEntity();
+
+    LocalDateTime now =
+        LocalDateTime.now();
+
+    record.tenant = tenant;
+
+    record.customer = customer;
+    record.location = location;
+    record.category = category;
+
+    record.description = description;
+
+    record.latitude = latitude;
+    record.longitude = longitude;
+
+    record.imageUrl = imageUrl;
+    record.imagePath = imagePath;
+
+    record.capturedAt = capturedAt;
+
+    record.receivedAt = now;
+    record.createdAt = now;
+    record.updatedAt = now;
+
+    return record;
+}
+
     protected CapturedRecordEntity() {
     }
 }

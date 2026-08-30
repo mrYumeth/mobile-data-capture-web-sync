@@ -1,6 +1,9 @@
 class KeycloakConfig {
-  static const String issuer =
-      'https://mobile-data-capture-web-sync.onrender.com/realms/fieldsync';
+  static const String issuer = String.fromEnvironment(
+    'FIELDSYNC_KEYCLOAK_ISSUER',
+    defaultValue:
+        'https://mobile-data-capture-web-sync.onrender.com/realms/fieldsync',
+  );
 
   static const String clientId = 'fieldsync-mobile';
 

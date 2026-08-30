@@ -9,19 +9,30 @@ class KeycloakMobileService {
       AuthorizationServiceConfiguration(
         authorizationEndpoint:
             '${KeycloakConfig.issuer}/protocol/openid-connect/auth',
+
         tokenEndpoint: '${KeycloakConfig.issuer}/protocol/openid-connect/token',
+
         endSessionEndpoint:
             '${KeycloakConfig.issuer}/protocol/openid-connect/logout',
       );
+
+  static bool get _allowInsecureConnections {
+    return KeycloakConfig.issuer.toLowerCase().startsWith('http://');
+  }
 
   Future<TokenResponse?> login() async {
     return _appAuth.authorizeAndExchangeCode(
       AuthorizationTokenRequest(
         KeycloakConfig.clientId,
         KeycloakConfig.redirectUrl,
+
         serviceConfiguration: _serviceConfiguration,
+
         scopes: KeycloakConfig.scopes,
+
         promptValues: ['login'],
+
+        allowInsecureConnections: _allowInsecureConnections,
       ),
     );
   }
@@ -31,9 +42,14 @@ class KeycloakMobileService {
       TokenRequest(
         KeycloakConfig.clientId,
         KeycloakConfig.redirectUrl,
+
         serviceConfiguration: _serviceConfiguration,
+
         refreshToken: refreshToken,
+
         scopes: KeycloakConfig.scopes,
+
+        allowInsecureConnections: _allowInsecureConnections,
       ),
     );
   }

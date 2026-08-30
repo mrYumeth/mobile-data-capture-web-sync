@@ -73,6 +73,34 @@ public class CapturedImageEntity {
         return tenant;
     }
 
+    public static CapturedImageEntity create(
+        CapturedRecordEntity capturedRecord,
+        TenantEntity tenant,
+        String imageUrl,
+        String storagePath
+) {
+
+    CapturedImageEntity image =
+        new CapturedImageEntity();
+
+    image.capturedRecord =
+        capturedRecord;
+
+    image.tenant =
+        tenant;
+
+    image.imageUrl =
+        imageUrl;
+
+    image.storagePath =
+        storagePath;
+
+    image.createdAt =
+        LocalDateTime.now();
+
+    return image;
+}
+
     protected CapturedImageEntity() {
     }
 }
