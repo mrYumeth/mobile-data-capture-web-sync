@@ -154,6 +154,15 @@ public void linkKeycloakUser(
     this.updatedAt = LocalDateTime.now();
 }
 
+public LocalDateTime getCreatedAt() {
+    return createdAt;
+}
+
+
+public LocalDateTime getConfirmedAt() {
+    return confirmedAt;
+}
+
     protected UserEntity() {
     }
 }

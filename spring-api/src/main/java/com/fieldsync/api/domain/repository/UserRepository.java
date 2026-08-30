@@ -24,4 +24,8 @@ public interface UserRepository
     List<UserEntity> findAllByTenant_Id(
         Integer tenantId
     );
+
+    List<UserEntity> findAllByTenant_IdOrderByCreatedAtDesc(
+    Integer tenantId
+    );
 }
