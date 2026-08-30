@@ -163,6 +163,89 @@ public LocalDateTime getConfirmedAt() {
     return confirmedAt;
 }
 
+public static UserEntity createKeycloakUser(
+        TenantEntity tenant,
+        UserEntity createdBy,
+        String username,
+        String email,
+        String fullName,
+        boolean accessWeb,
+        boolean accessMobile,
+        String keycloakUserId
+) {
+
+    if (tenant == null) {
+        throw new IllegalArgumentException(
+            "Tenant is required"
+        );
+    }
+
+    if (
+        keycloakUserId == null ||
+        keycloakUserId.isBlank()
+    ) {
+        throw new IllegalArgumentException(
+            "Keycloak user ID is required"
+        );
+    }
+
+
+    LocalDateTime now =
+        LocalDateTime.now();
+
+
+    UserEntity user =
+        new UserEntity();
+
+    user.tenant =
+        tenant;
+
+    user.createdBy =
+        createdBy;
+
+    user.username =
+        username;
+
+    user.email =
+        email;
+
+    user.passwordHash =
+        "KEYCLOAK_AUTH_ONLY";
+
+    user.fullName =
+        fullName;
+
+    user.role =
+        "user";
+
+    user.active =
+        true;
+
+    user.accessWeb =
+        accessWeb;
+
+    user.accessMobile =
+        accessMobile;
+
+    user.passwordChangeRequired =
+        false;
+
+    user.confirmedAt =
+        now;
+
+    user.keycloakUserId =
+        keycloakUserId;
+
+    user.createdAt =
+        now;
+
+    user.updatedAt =
+        now;
+
+
+    return user;
+}
+
     protected UserEntity() {
     }
 }

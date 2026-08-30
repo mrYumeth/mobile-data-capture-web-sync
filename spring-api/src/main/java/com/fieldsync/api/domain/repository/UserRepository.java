@@ -21,6 +21,11 @@ public interface UserRepository
         String email
     );
 
+    Optional<UserEntity> findByIdAndTenant_Id(
+    Integer id,
+    Integer tenantId
+);
+
     List<UserEntity> findAllByTenant_Id(
         Integer tenantId
     );

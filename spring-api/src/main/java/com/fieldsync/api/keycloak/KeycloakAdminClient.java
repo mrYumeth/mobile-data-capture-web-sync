@@ -2,6 +2,7 @@ package com.fieldsync.api.keycloak;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import org.hibernate.boot.model.relational.QualifiedNameParser.NameParts;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 
@@ -15,6 +16,13 @@ import org.springframework.util.MultiValueMap;
 
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 
 @Component
@@ -106,6 +114,291 @@ public class KeycloakAdminClient {
             );
         }
     }
+
+    public String createUser(
+        String username,
+        String email,
+        String fullName,
+        boolean accessWeb,
+        boolean accessMobile
+) {
+
+    String accessToken =
+        getAdminAccessToken();
+
+    NameParts nameParts =
+        splitFullName(
+            fullName
+        );
+
+
+    Map<String, Object> attributes =
+        new LinkedHashMap<>();
+
+    attributes.put(
+        "fieldsync_access_web",
+        List.of(
+            Boolean.toString(
+                accessWeb
+            )
+        )
+    );
+
+    attributes.put(
+        "fieldsync_access_mobile",
+        List.of(
+            Boolean.toString(
+                accessMobile
+            )
+        )
+    );
+
+
+    Map<String, Object> body =
+        new LinkedHashMap<>();
+
+    body.put(
+        "username",
+        username
+    );
+
+    body.put(
+        "email",
+        email
+    );
+
+    body.put(
+        "firstName",
+        nameParts.firstName()
+    );
+
+    body.put(
+        "lastName",
+        nameParts.lastName()
+    );
+
+    body.put(
+        "enabled",
+        true
+    );
+
+    body.put(
+        "emailVerified",
+        true
+    );
+
+    body.put(
+        "requiredActions",
+        List.of(
+            "UPDATE_PASSWORD"
+        )
+    );
+
+    body.put(
+        "attributes",
+        attributes
+    );
+
+
+    try {
+
+        ResponseEntity<Void> response =
+            restClient
+                .post()
+                .uri(
+                    "/admin/realms/{realm}/users",
+                    realm
+                )
+                .header(
+                    HttpHeaders.AUTHORIZATION,
+                    "Bearer " + accessToken
+                )
+                .contentType(
+                    MediaType.APPLICATION_JSON
+                )
+                .body(body)
+                .retrieve()
+                .toBodilessEntity();
+
+
+        String location =
+            response
+                .getHeaders()
+                .getFirst(
+                    HttpHeaders.LOCATION
+                );
+
+
+        String keycloakUserId =
+            getUserIdFromLocation(
+                location
+            );
+
+
+        if (
+            keycloakUserId == null ||
+            keycloakUserId.isBlank()
+        ) {
+
+            throw new KeycloakAdminException(
+                "Keycloak user was created, but user ID was not returned"
+            );
+        }
+
+
+        return keycloakUserId;
+
+    }
+    catch (
+        RestClientResponseException exception
+    ) {
+
+        if (
+            exception
+                .getStatusCode()
+                .value()
+                ==
+                HttpStatus.CONFLICT.value()
+        ) {
+
+            throw new KeycloakUserConflictException(
+                "A Keycloak user with this username or email already exists"
+            );
+        }
+
+
+        throw new KeycloakAdminException(
+            "Failed to create Keycloak user; HTTP "
+                + exception
+                    .getStatusCode()
+                    .value(),
+            exception
+        );
+    }
+}
+
+
+public void setTemporaryPassword(
+        String keycloakUserId,
+        String temporaryPassword
+) {
+
+    String accessToken =
+        getAdminAccessToken();
+
+
+    Map<String, Object> body =
+        new LinkedHashMap<>();
+
+    body.put(
+        "type",
+        "password"
+    );
+
+    body.put(
+        "value",
+        temporaryPassword
+    );
+
+    body.put(
+        "temporary",
+        true
+    );
+
+
+    try {
+
+        restClient
+            .put()
+            .uri(
+                "/admin/realms/{realm}/users/{userId}/reset-password",
+                realm,
+                keycloakUserId
+            )
+            .header(
+                HttpHeaders.AUTHORIZATION,
+                "Bearer " + accessToken
+            )
+            .contentType(
+                MediaType.APPLICATION_JSON
+            )
+            .body(body)
+            .retrieve()
+            .toBodilessEntity();
+
+    }
+    catch (
+        RestClientResponseException exception
+    ) {
+
+        throw new KeycloakAdminException(
+            "Failed to set Keycloak temporary password; HTTP "
+                + exception
+                    .getStatusCode()
+                    .value(),
+            exception
+        );
+    }
+}
+
+
+public void deleteUser(
+        String keycloakUserId
+) {
+
+    if (
+        keycloakUserId == null ||
+        keycloakUserId.isBlank()
+    ) {
+        return;
+    }
+
+
+    String accessToken =
+        getAdminAccessToken();
+
+
+    try {
+
+        restClient
+            .delete()
+            .uri(
+                "/admin/realms/{realm}/users/{userId}",
+                realm,
+                keycloakUserId
+            )
+            .header(
+                HttpHeaders.AUTHORIZATION,
+                "Bearer " + accessToken
+            )
+            .retrieve()
+            .toBodilessEntity();
+
+    }
+    catch (
+        RestClientResponseException exception
+    ) {
+
+        if (
+            exception
+                .getStatusCode()
+                .value()
+                ==
+                HttpStatus.NOT_FOUND.value()
+        ) {
+            return;
+        }
+
+
+        throw new KeycloakAdminException(
+            "Failed to delete Keycloak user; HTTP "
+                + exception
+                    .getStatusCode()
+                    .value(),
+            exception
+        );
+    }
+}
 
 
     private String getAdminAccessToken() {
@@ -214,6 +507,90 @@ public class KeycloakAdminClient {
         return result;
     }
 
+    private static NameParts splitFullName(
+        String fullName
+) {
+
+    String normalized =
+        fullName.trim();
+
+
+    String[] parts =
+        normalized.split(
+            "\\s+",
+            2
+        );
+
+
+    if (parts.length == 1) {
+
+        return new NameParts(
+            parts[0],
+            ""
+        );
+    }
+
+
+    return new NameParts(
+        parts[0],
+        parts[1]
+    );
+}
+
+
+private static String getUserIdFromLocation(
+        String location
+) {
+
+    if (
+        location == null ||
+        location.isBlank()
+    ) {
+        return null;
+    }
+
+
+    String normalized =
+        location.trim();
+
+    while (
+        normalized.endsWith("/")
+    ) {
+
+        normalized =
+            normalized.substring(
+                0,
+                normalized.length() - 1
+            );
+    }
+
+
+    int separator =
+        normalized.lastIndexOf('/');
+
+
+    if (
+        separator < 0 ||
+        separator ==
+            normalized.length() - 1
+    ) {
+        return null;
+    }
+
+
+    return normalized.substring(
+        separator + 1
+    );
+}
+
+
+    private record NameParts(
+
+    String firstName,
+    String lastName
+
+) {
+}
 
     private record TokenResponse(
 
@@ -221,5 +598,6 @@ public class KeycloakAdminClient {
         String accessToken
 
     ) {
+        
     }
 }
