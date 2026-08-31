@@ -1,0 +1,64 @@
+package com.fieldsync.api.adminuser;
+
+import org.springframework.http.ResponseEntity;
+
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.Map;
+
+
+@RestController
+@RequestMapping("/api/admin/users")
+public class AdminUserDeleteController {
+
+    private final AdminUserDeleteService
+        adminUserDeleteService;
+
+
+    public AdminUserDeleteController(
+            AdminUserDeleteService adminUserDeleteService
+    ) {
+
+        this.adminUserDeleteService =
+            adminUserDeleteService;
+    }
+
+
+    @DeleteMapping("/{id}")
+    public AdminUserDeleteResponse deleteUser(
+
+            @PathVariable("id")
+            Integer userId
+    ) {
+
+        return adminUserDeleteService
+            .deleteUser(
+                userId
+            );
+    }
+
+
+    @ExceptionHandler(
+        AdminUserApiException.class
+    )
+    public ResponseEntity<Map<String, String>>
+    handleAdminUserApiException(
+            AdminUserApiException exception
+    ) {
+
+        return ResponseEntity
+            .status(
+                exception.getStatus()
+            )
+            .body(
+                Map.of(
+                    "message",
+                    exception.getMessage()
+                )
+            );
+    }
+}
