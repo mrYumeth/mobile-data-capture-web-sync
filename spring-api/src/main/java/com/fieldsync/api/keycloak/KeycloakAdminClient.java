@@ -2,7 +2,6 @@ package com.fieldsync.api.keycloak;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import org.hibernate.boot.model.relational.QualifiedNameParser.NameParts;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 
@@ -333,6 +332,138 @@ public void setTemporaryPassword(
 
         throw new KeycloakAdminException(
             "Failed to set Keycloak temporary password; HTTP "
+                + exception
+                    .getStatusCode()
+                    .value(),
+            exception
+        );
+    }
+}
+
+public void updateUser(
+        String keycloakUserId,
+        String fullName,
+        String email,
+        boolean accessWeb,
+        boolean accessMobile,
+        boolean active
+) {
+
+    if (
+        keycloakUserId == null ||
+        keycloakUserId.isBlank()
+    ) {
+        return;
+    }
+
+
+    String accessToken =
+        getAdminAccessToken();
+
+
+    NameParts nameParts =
+        splitFullName(
+            fullName
+        );
+
+
+    Map<String, Object> attributes =
+        new LinkedHashMap<>();
+
+    attributes.put(
+        "fieldsync_access_web",
+        List.of(
+            Boolean.toString(
+                accessWeb
+            )
+        )
+    );
+
+    attributes.put(
+        "fieldsync_access_mobile",
+        List.of(
+            Boolean.toString(
+                accessMobile
+            )
+        )
+    );
+
+
+    Map<String, Object> body =
+        new LinkedHashMap<>();
+
+    body.put(
+        "firstName",
+        nameParts.firstName()
+    );
+
+    body.put(
+        "lastName",
+        nameParts.lastName()
+    );
+
+    body.put(
+        "email",
+        email
+    );
+
+    body.put(
+        "emailVerified",
+        true
+    );
+
+    body.put(
+        "enabled",
+        active
+    );
+
+    body.put(
+        "attributes",
+        attributes
+    );
+
+
+    try {
+
+        restClient
+            .put()
+            .uri(
+                "/admin/realms/{realm}/users/{userId}",
+                realm,
+                keycloakUserId
+            )
+            .header(
+                HttpHeaders.AUTHORIZATION,
+                "Bearer " + accessToken
+            )
+            .contentType(
+                MediaType.APPLICATION_JSON
+            )
+            .body(body)
+            .retrieve()
+            .toBodilessEntity();
+
+    }
+    catch (
+        RestClientResponseException exception
+    ) {
+
+        if (
+            exception
+                .getStatusCode()
+                .value()
+                ==
+                HttpStatus.CONFLICT.value()
+        ) {
+
+            throw new KeycloakUserConflictException(
+                "A Keycloak user with this username or email already exists"
+            );
+        }
+
+
+        throw new KeycloakAdminException(
+            "Failed to update Keycloak user; HTTP "
                 + exception
                     .getStatusCode()
                     .value(),

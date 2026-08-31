@@ -26,6 +26,12 @@ public interface UserRepository
     Integer tenantId
 );
 
+    Optional<UserEntity>
+findByEmailIgnoreCaseAndIdNot(
+    String email,
+    Integer id
+);
+
     List<UserEntity> findAllByTenant_Id(
         Integer tenantId
     );

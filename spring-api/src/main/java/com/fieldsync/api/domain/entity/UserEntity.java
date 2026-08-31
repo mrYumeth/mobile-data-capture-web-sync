@@ -246,6 +246,43 @@ public static UserEntity createKeycloakUser(
     return user;
 }
 
+public void updateAdminManagedUser(
+        String fullName,
+        String email,
+        Boolean accessWeb,
+        Boolean accessMobile,
+        Boolean active
+) {
+
+    if (fullName != null) {
+        this.fullName =
+            fullName;
+    }
+
+    if (email != null) {
+        this.email =
+            email;
+    }
+
+    if (accessWeb != null) {
+        this.accessWeb =
+            accessWeb;
+    }
+
+    if (accessMobile != null) {
+        this.accessMobile =
+            accessMobile;
+    }
+
+    if (active != null) {
+        this.active =
+            active;
+    }
+
+    this.updatedAt =
+        LocalDateTime.now();
+}
+
     protected UserEntity() {
     }
 }
