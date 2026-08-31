@@ -19,7 +19,8 @@ function RegisterTenantPage({
   const [temporaryPassword, setTemporaryPassword] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const isKeycloakAuth = import.meta.env.VITE_AUTH_PROVIDER === 'keycloak'
+const isKeycloakAuth =
+  (import.meta.env.VITE_AUTH_PROVIDER || 'keycloak') === 'keycloak'
 
   async function handleSubmit(event) {
     event.preventDefault()

@@ -63,7 +63,8 @@ function App() {
     return Boolean(localStorage.getItem(AUTH_TOKEN_KEY))
   })
 
-  const isKeycloakAuth = import.meta.env.VITE_AUTH_PROVIDER === 'keycloak'
+  const isKeycloakAuth =
+  (import.meta.env.VITE_AUTH_PROVIDER || 'keycloak') === 'keycloak'
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)

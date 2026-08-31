@@ -1,22 +1,32 @@
 import { refreshKeycloakToken } from './keycloakService'
 
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'
+  import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081'
+
+const AUTH_PROVIDER =
+  import.meta.env.VITE_AUTH_PROVIDER || 'keycloak'
 
 const AUTH_TOKEN_KEY = 'fieldsync-auth-token'
 const AUTH_STATE_KEY = 'fieldsync-admin-auth'
 
 async function getAuthToken() {
-  if (import.meta.env.VITE_AUTH_PROVIDER === 'keycloak') {
-    const refreshedToken = await refreshKeycloakToken()
+  if (AUTH_PROVIDER === 'keycloak') {
+    const refreshedToken =
+      await refreshKeycloakToken()
 
     if (refreshedToken) {
-      localStorage.setItem(AUTH_TOKEN_KEY, refreshedToken)
+      localStorage.setItem(
+        AUTH_TOKEN_KEY,
+        refreshedToken
+      )
+
       return refreshedToken
     }
   }
 
-  return localStorage.getItem(AUTH_TOKEN_KEY)
+  return localStorage.getItem(
+    AUTH_TOKEN_KEY
+  )
 }
 
 function clearAuthState() {
@@ -52,15 +62,26 @@ const token = await getAuthToken()
 }
 
 export const authApi = {
-  login(credentials) {
-    return request('/api/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({
-        ...credentials,
-        clientType: 'web',
-      }),
-    })
+
+  registerTenant(data) {
+
+    return request(
+      '/api/auth/register-tenant',
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    )
   },
+
+
+  me() {
+
+    return request(
+      '/api/auth/me'
+    )
+  },
+
 
   registerTenant(data) {
   return request('/api/auth/register-tenant', {
@@ -118,13 +139,7 @@ export const userApi = {
     return request(`/api/admin/users/${id}`, {
       method: 'DELETE',
     })
-  },
-
-  resetKeycloakPassword(id) {
-  return request(`/api/admin/users/${id}/reset-keycloak-password`, {
-    method: 'POST',
-  })
-},
+  }, 
   
 }
 

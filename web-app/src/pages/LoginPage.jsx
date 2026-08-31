@@ -6,59 +6,57 @@ import {
   loginWithKeycloak,
 } from '../services/keycloakService'
 
-function LoginPage({ onLogin, onShowRegister, theme, toggleTheme }) {
-  const [username, setUsername] = useState('')
-  const [password, setPassword] = useState('')
+function LoginPage({
+  onLogin,
+  onShowRegister,
+  theme,
+  toggleTheme,
+}) {
   const [error, setError] = useState('')
 
-  const isKeycloakAuth = import.meta.env.VITE_AUTH_PROVIDER === 'keycloak'
+  useEffect(() => {
+    async function completeKeycloakLogin() {
+      try {
+        const isAuthenticated =
+          await initKeycloak()
 
-useEffect(() => {
-  async function completeKeycloakLogin() {
-    try {
-      const isAuthenticated = await initKeycloak()
+        if (!isAuthenticated) {
+          return
+        }
 
-      if (!isAuthenticated) {
-        return
+        const token =
+          getKeycloakToken()
+
+        if (!token) {
+          return
+        }
+
+        localStorage.setItem(
+          'fieldsync-auth-token',
+          token
+        )
+
+        localStorage.setItem(
+          'fieldsync-admin-auth',
+          'true'
+        )
+
+        const user =
+          await authApi.me()
+
+        onLogin(
+          user.user
+        )
+      } catch (error) {
+        setError(
+          error.message ||
+            'Keycloak login failed.'
+        )
       }
-
-      const token = getKeycloakToken()
-
-      if (!token) {
-        return
-      }
-
-      localStorage.setItem('fieldsync-auth-token', token)
-      localStorage.setItem('fieldsync-admin-auth', 'true')
-
-      const user = await authApi.me()
-      onLogin(user.user)
-    } catch (error) {
-      setError(error.message || 'Keycloak login failed.')
     }
-  }
 
-  completeKeycloakLogin()
-}, [onLogin])
-
-async function handleSubmit(event) {
-  event.preventDefault()
-  setError('')
-
-  try {
-    const result = await authApi.login({
-      username: username.trim(),
-      password,
-    })
-
-    localStorage.setItem('fieldsync-auth-token', result.token)
-    localStorage.setItem('fieldsync-admin-auth', 'true')
-
-    onLogin(result.user)
-  } catch (error) {
-    setError(error.message || 'Invalid username or password.')
-  }
-}
+    completeKeycloakLogin()
+  }, [onLogin])
 
   return (
     <div className="flex min-h-screen items-center justify-center px-4 py-8">
@@ -83,11 +81,18 @@ async function handleSubmit(event) {
                   alt="FieldSync Logo"
                   className="h-16 w-16 rounded-full bg-white object-contain p-1"
                 />
+
                 <div>
                   <h1 className="text-3xl font-extrabold">
-                    Field<span className="text-[#EB5979]">Sync</span>
+                    Field
+                    <span className="text-[#EB5979]">
+                      Sync
+                    </span>
                   </h1>
-                  <p className="text-gray-300">Admin Web Console</p>
+
+                  <p className="text-gray-300">
+                    Admin Web Console
+                  </p>
                 </div>
               </div>
 
@@ -110,19 +115,28 @@ async function handleSubmit(event) {
               alt="FieldSync Logo"
               className="mx-auto h-20 w-20 rounded-full object-contain"
             />
+
             <h1 className="mt-4 text-3xl font-extrabold">
-              Field<span className="text-[#EB5979]">Sync</span>
+              Field
+              <span className="text-[#EB5979]">
+                Sync
+              </span>
             </h1>
-            <p className="text-gray-600">Admin Web Console</p>
+
+            <p className="text-gray-600">
+              Admin Web Console
+            </p>
           </div>
 
           <div>
             <p className="text-sm font-bold uppercase tracking-[0.25em] text-[#EB5979]">
               Admin Login
             </p>
+
             <h2 className="mt-3 text-3xl font-extrabold text-gray-950">
               Welcome back
             </h2>
+
             <p className="mt-2 text-gray-600">
               Sign in to access the FieldSync dashboard.
             </p>
@@ -134,76 +148,51 @@ async function handleSubmit(event) {
             </div>
           )}
 
-        {isKeycloakAuth ? (
           <div className="mt-8 space-y-5">
             <button
               type="button"
-              onClick={() => loginWithKeycloak()}
+              onClick={() =>
+                loginWithKeycloak()
+              }
               className="primary-button w-full"
             >
-              Login 
+              Login
             </button>
 
             <p className="text-center text-sm text-gray-500">
               You will be redirected to the FieldSync IAM login page.
             </p>
           </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="mt-8 space-y-5">
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-gray-700">
-                Username
-              </label>
-              <input
-                type="text"
-                value={username}
-                onChange={(event) => setUsername(event.target.value)}
-                placeholder="Enter username"
-                className="form-input"
-                autoComplete="username"
-              />
-            </div>
 
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-gray-700">
-                Password
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder="Enter password"
-                className="form-input"
-                autoComplete="current-password"
-              />
-            </div>
-
-            <button type="submit" className="primary-button w-full">
-              Login to Dashboard
-            </button>
-          </form>
-        )}
           <div className="mt-6 rounded-2xl bg-white p-4 text-sm text-gray-600">
-            <p className="font-semibold text-gray-800">Secure access only</p>
+            <p className="font-semibold text-gray-800">
+              Secure access only
+            </p>
+
             <p className="mt-1">
-              User accounts are created by the administrator. Please use the username
-              provided by your admin.
+              User accounts are created by the administrator. Please use the
+              username provided by your admin.
             </p>
           </div>
-            <div className="mt-4 rounded-2xl bg-white p-4 text-sm text-gray-600">
-              <p className="font-semibold text-gray-800">New company?</p>
-              <p className="mt-1">
-                Register your company to create a new tenant workspace and first admin account.
-              </p>
 
-              <button
-                type="button"
-                onClick={onShowRegister}
-                className="mt-3 font-semibold text-[#EB5979] hover:underline"
-              >
-                Register Company
-              </button>
-            </div>
+          <div className="mt-4 rounded-2xl bg-white p-4 text-sm text-gray-600">
+            <p className="font-semibold text-gray-800">
+              New company?
+            </p>
+
+            <p className="mt-1">
+              Register your company to create a new tenant workspace and first
+              admin account.
+            </p>
+
+            <button
+              type="button"
+              onClick={onShowRegister}
+              className="mt-3 font-semibold text-[#EB5979] hover:underline"
+            >
+              Register Company
+            </button>
+          </div>
         </div>
       </div>
     </div>

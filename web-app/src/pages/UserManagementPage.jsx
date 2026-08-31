@@ -19,7 +19,11 @@ function UserManagementPage() {
   const [activeTab, setActiveTab] = useState('users')
   const [editingUserId, setEditingUserId] = useState(null)
 
-  const isKeycloakAuth = import.meta.env.VITE_AUTH_PROVIDER === 'keycloak'
+const isKeycloakAuth =
+  (import.meta.env.VITE_AUTH_PROVIDER || 'keycloak') === 'keycloak'
+
+const passwordResetEnabled =
+  import.meta.env.VITE_ENABLE_KEYCLOAK_PASSWORD_RESET === 'true'
 
   async function loadUsers() {
     try {
@@ -422,7 +426,7 @@ function handleCancelEdit() {
                                 Edit
                             </button>
 
-                            {isKeycloakAuth && user.keycloak_user_id && user.is_active && (
+                            {passwordResetEnabled && isKeycloakAuth && user.keycloak_user_id && user.is_active && (
                               <button
                                 type="button"
                                 onClick={() => handleResetKeycloakPassword(user)}
