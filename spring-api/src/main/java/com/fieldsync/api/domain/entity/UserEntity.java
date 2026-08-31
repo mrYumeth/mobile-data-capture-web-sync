@@ -283,6 +283,89 @@ public void updateAdminManagedUser(
         LocalDateTime.now();
 }
 
+public static UserEntity createKeycloakAdmin(
+        TenantEntity tenant,
+        String username,
+        String email,
+        String fullName,
+        String keycloakUserId
+) {
+
+    if (tenant == null) {
+
+        throw new IllegalArgumentException(
+            "Tenant is required"
+        );
+    }
+
+
+    if (
+        keycloakUserId == null ||
+        keycloakUserId.isBlank()
+    ) {
+
+        throw new IllegalArgumentException(
+            "Keycloak user ID is required"
+        );
+    }
+
+
+    LocalDateTime now =
+        LocalDateTime.now();
+
+
+    UserEntity user =
+        new UserEntity();
+
+    user.tenant =
+        tenant;
+
+    user.createdBy =
+        null;
+
+    user.username =
+        username;
+
+    user.email =
+        email;
+
+    user.passwordHash =
+        "KEYCLOAK_AUTH_ONLY";
+
+    user.fullName =
+        fullName;
+
+    user.role =
+        "admin";
+
+    user.active =
+        true;
+
+    user.accessWeb =
+        true;
+
+    user.accessMobile =
+        true;
+
+    user.passwordChangeRequired =
+        false;
+
+    user.confirmedAt =
+        now;
+
+    user.keycloakUserId =
+        keycloakUserId;
+
+    user.createdAt =
+        now;
+
+    user.updatedAt =
+        now;
+
+
+    return user;
+}
+
     protected UserEntity() {
     }
 }

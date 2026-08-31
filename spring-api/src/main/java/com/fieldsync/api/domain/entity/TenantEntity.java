@@ -47,6 +47,54 @@ public class TenantEntity {
     return id;
 }
 
+public String getName() {
+    return name;
+}
+
+public String getSlug() {
+    return slug;
+}
+
+public Boolean getActive() {
+    return active;
+}
+
+public LocalDateTime getCreatedAt() {
+    return createdAt;
+}
+
+
+public static TenantEntity create(
+        String name,
+        String slug
+) {
+
+    LocalDateTime now =
+        LocalDateTime.now();
+
+
+    TenantEntity tenant =
+        new TenantEntity();
+
+    tenant.name =
+        name;
+
+    tenant.slug =
+        slug;
+
+    tenant.active =
+        true;
+
+    tenant.createdAt =
+        now;
+
+    tenant.updatedAt =
+        now;
+
+
+    return tenant;
+}
+
     protected TenantEntity() {
     }
 }

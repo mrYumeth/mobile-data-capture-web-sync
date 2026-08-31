@@ -15,6 +15,8 @@ import org.springframework.web.cors.CorsConfigurationSource;
 
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import org.springframework.http.HttpMethod;
+
 import java.util.List;
 
 
@@ -47,6 +49,12 @@ public class SecurityConfig {
             .authorizeHttpRequests(
                 authorize ->
                     authorize
+
+                        .requestMatchers(
+                            HttpMethod.POST,
+                            "/api/auth/register-tenant"
+                        )
+                        .permitAll()
 
                         .requestMatchers(
                             "/actuator/health",
