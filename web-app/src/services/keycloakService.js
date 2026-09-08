@@ -18,12 +18,15 @@ const keycloak = new Keycloak({
 let initPromise = null
 let refreshPromise = null
 
+const redirectUri = `${window.location.origin}/`
+
 export function initKeycloak() {
   if (!initPromise) {
     initPromise = keycloak.init({
       onLoad: 'check-sso',
       pkceMethod: 'S256',
       checkLoginIframe: false,
+      redirectUri,
     })
   }
 
@@ -34,7 +37,7 @@ export async function loginWithKeycloak() {
   await initKeycloak()
 
   return keycloak.login({
-    redirectUri: window.location.origin,
+    redirectUri,
   })
 }
 
@@ -42,7 +45,7 @@ export async function logoutFromKeycloak() {
   await initKeycloak()
 
   return keycloak.logout({
-    redirectUri: window.location.origin,
+    redirectUri,
   })
 }
 

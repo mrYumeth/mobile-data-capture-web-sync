@@ -845,7 +845,8 @@
         "profile",
         "roles",
         "basic",
-        "email"
+        "email",
+        "fieldsync-api-audience"
       ],
       "optionalClientScopes": [
         "address",
@@ -902,7 +903,8 @@
         "profile",
         "roles",
         "basic",
-        "email"
+        "email",
+        "fieldsync-api-audience"
       ],
       "optionalClientScopes": [
         "address",
@@ -1026,6 +1028,35 @@
   ],
   "clientScopes": [
     {
+      "id": "fe303476-35e7-4594-8122-6dedcc11e517",
+      "name": "fieldsync-api-audience",
+      "description": "",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "false",
+        "display.on.consent.screen": "true",
+        "gui.order": "",
+        "consent.screen.text": "",
+        "include.in.openid.provider.metadata": "true"
+      },
+      "protocolMappers": [
+        {
+          "id": "928fdfa5-381a-4ff5-a099-d6abe92d3811",
+          "name": "fieldsync-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "id.token.claim": "false",
+            "lightweight.claim": "false",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true",
+            "included.custom.audience": "fieldsync-api"
+          }
+        }
+      ]
+    },
+    {
       "id": "f7efc034-6f2f-4277-99ec-79a2e28979fc",
       "name": "email",
       "description": "OpenID Connect built-in scope: email",
@@ -1070,6 +1101,7 @@
         }
       ]
     },
+
     {
       "id": "9c2d6980-cfb5-4963-8aea-c33021e9c9fa",
       "name": "offline_access",
