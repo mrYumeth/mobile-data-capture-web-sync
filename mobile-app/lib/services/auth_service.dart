@@ -22,6 +22,7 @@ class AuthService {
   static const String _tokenKey = 'fieldsync_auth_token';
   static const String _userKey = 'fieldsync_auth_user';
   static const String _refreshTokenKey = 'fieldsync_refresh_token';
+  static const String _idTokenKey = 'fieldsync_id_token';
 
   static Future<String?> getStoredToken() async {
     return _secureStorage.read(key: _tokenKey);
@@ -50,6 +51,18 @@ class AuthService {
 
   static Future<void> clearStoredToken() async {
     await clearSession();
+  }
+
+  static Future<void> logoutWithKeycloak() async {
+    final idToken = await _secureStorage.read(key: _idTokenKey);
+
+    try {
+      if (idToken != null && idToken.isNotEmpty) {
+        await KeycloakMobileService().logout(idToken);
+      }
+    } finally {
+      await clearSession();
+    }
   }
 
   Future<AuthResult> login({
@@ -184,6 +197,7 @@ class AuthService {
 
       final accessToken = tokenResponse?.accessToken;
       final refreshToken = tokenResponse?.refreshToken;
+      final idToken = tokenResponse?.idToken;
 
       if (accessToken == null || accessToken.isEmpty) {
         return const AuthResult(
@@ -213,6 +227,10 @@ class AuthService {
 
       if (refreshToken != null && refreshToken.isNotEmpty) {
         await _secureStorage.write(key: _refreshTokenKey, value: refreshToken);
+      }
+
+      if (idToken != null && idToken.isNotEmpty) {
+        await _secureStorage.write(key: _idTokenKey, value: idToken);
       }
 
       await _secureStorage.write(

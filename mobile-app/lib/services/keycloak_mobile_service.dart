@@ -61,4 +61,15 @@ class KeycloakMobileService {
       ),
     );
   }
+
+  Future<void> logout(String idToken) async {
+    await _appAuth.endSession(
+      EndSessionRequest(
+        idTokenHint: idToken,
+        postLogoutRedirectUrl: KeycloakConfig.redirectUrl,
+        serviceConfiguration: _serviceConfiguration,
+        allowInsecureConnections: _allowInsecureConnections,
+      ),
+    );
+  }
 }

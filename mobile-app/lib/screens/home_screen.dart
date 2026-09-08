@@ -51,7 +51,7 @@ class HomeScreen extends StatelessWidget {
       return;
     }
 
-    await AuthService.clearSession();
+    await AuthService.logoutWithKeycloak();
 
     if (!context.mounted) return;
 
