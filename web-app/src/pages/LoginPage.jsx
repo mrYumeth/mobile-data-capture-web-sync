@@ -24,22 +24,10 @@ function LoginPage({
           return
         }
 
-        const token =
-          getKeycloakToken()
+            const token = getKeycloakToken()
+    if (!token) return
 
-        if (!token) {
-          return
-        }
-
-        localStorage.setItem(
-          'fieldsync-auth-token',
-          token
-        )
-
-        localStorage.setItem(
-          'fieldsync-admin-auth',
-          'true'
-        )
+    localStorage.setItem('fieldsync-admin-auth', 'true')
 
         const user =
           await authApi.me()

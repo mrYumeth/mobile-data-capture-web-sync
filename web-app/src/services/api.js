@@ -1,4 +1,7 @@
-import { refreshKeycloakToken } from './keycloakService'
+import {
+  refreshKeycloakToken,
+  clearKeycloakToken,
+} from './keycloakService'
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081'
@@ -11,22 +14,18 @@ const AUTH_STATE_KEY = 'fieldsync-admin-auth'
 
 async function getAuthToken() {
   if (AUTH_PROVIDER === 'keycloak') {
-    const refreshedToken =
-      await refreshKeycloakToken()
-
-    if (refreshedToken) {
-      localStorage.setItem(
-        AUTH_TOKEN_KEY,
-        refreshedToken
-      )
-
-      return refreshedToken
+    try {
+      // Keycloak keeps the token in memory.
+      // updateToken() refreshes it when necessary.
+      return await refreshKeycloakToken()
+    } catch {
+      return null
     }
   }
 
-  return localStorage.getItem(
-    AUTH_TOKEN_KEY
-  )
+  // Legacy/local authentication support.
+  // This is not used when Keycloak is enabled.
+  return localStorage.getItem(AUTH_TOKEN_KEY)
 }
 
 function clearAuthState() {
@@ -35,7 +34,7 @@ function clearAuthState() {
 }
 
 async function request(path, options = {}) {
-const token = await getAuthToken()
+  const token = await getAuthToken()
 
   const headers = {
     ...(options.body ? { 'Content-Type': 'application/json' } : {}),
@@ -52,6 +51,14 @@ const token = await getAuthToken()
 
   if (!response.ok) {
     if (response.status === 401) {
+      if (AUTH_PROVIDER === 'keycloak') {
+        clearKeycloakToken()
+
+        window.dispatchEvent(
+          new CustomEvent('fieldsync-auth-expired')
+        )
+      }
+
       clearAuthState()
     }
 
@@ -62,33 +69,16 @@ const token = await getAuthToken()
 }
 
 export const authApi = {
-
   registerTenant(data) {
-
-    return request(
-      '/api/auth/register-tenant',
-      {
-        method: 'POST',
-        body: JSON.stringify(data),
-      }
-    )
+    return request('/api/auth/register-tenant', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
   },
-
 
   me() {
-
-    return request(
-      '/api/auth/me'
-    )
+    return request('/api/auth/me')
   },
-
-
-  registerTenant(data) {
-  return request('/api/auth/register-tenant', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  })
-},
 
   setupPassword(data) {
     return request('/api/auth/setup-password', {
@@ -102,10 +92,6 @@ export const authApi = {
       method: 'POST',
       body: JSON.stringify(data),
     })
-  },
-
-  me() {
-    return request('/api/auth/me')
   },
 }
 
@@ -135,12 +121,11 @@ export const userApi = {
     })
   },
 
-    remove(id) {
+  remove(id) {
     return request(`/api/admin/users/${id}`, {
       method: 'DELETE',
     })
-  }, 
-  
+  },
 }
 
 export const customerApi = {
@@ -223,13 +208,17 @@ export const categoryApi = {
 
 export const dashboardApi = {
   async getSummary() {
-    const [customers, locations, categories, capturedRecords] =
-      await Promise.all([
-        request('/api/customers'),
-        request('/api/locations'),
-        request('/api/categories'),
-        request('/api/captured-records'),
-      ])
+    const [
+      customers,
+      locations,
+      categories,
+      capturedRecords,
+    ] = await Promise.all([
+      request('/api/customers'),
+      request('/api/locations'),
+      request('/api/categories'),
+      request('/api/captured-records'),
+    ])
 
     return {
       customers: customers.length,

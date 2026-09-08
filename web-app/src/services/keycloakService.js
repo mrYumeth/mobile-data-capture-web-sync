@@ -7,6 +7,7 @@ const keycloak = new Keycloak({
 })
 
 let initPromise = null
+let refreshPromise = null
 
 export function initKeycloak() {
   if (!initPromise) {
@@ -45,6 +46,20 @@ export async function refreshKeycloakToken() {
     return null
   }
 
-  await keycloak.updateToken(60)
-  return keycloak.token
+  if (!refreshPromise) {
+    refreshPromise = (async () => {
+      await keycloak.updateToken(60)
+      return keycloak.token
+    })()
+  }
+
+  try {
+    return await refreshPromise
+  } finally {
+    refreshPromise = null
+  }
+}
+
+export function clearKeycloakToken() {
+  keycloak.clearToken()
 }

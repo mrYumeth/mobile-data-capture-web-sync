@@ -11,7 +11,6 @@ import ChangePasswordPage from './pages/ChangePasswordPage'
 import RegisterTenantPage from './pages/RegisterTenantPage'
 import { logoutFromKeycloak } from './services/keycloakService'
 
-const AUTH_TOKEN_KEY = 'fieldsync-auth-token'
 const AUTH_STATE_KEY = 'fieldsync-admin-auth'
 const AUTH_USER_KEY = 'fieldsync-auth-user'
 const LAST_ACTIVITY_KEY = 'fieldsync-last-activity'
@@ -59,9 +58,7 @@ function App() {
 
   const [isLoggingOut, setIsLoggingOut] = useState(false)
 
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    return Boolean(localStorage.getItem(AUTH_TOKEN_KEY))
-  })
+const [isAuthenticated, setIsAuthenticated] = useState(false)
 
   const isKeycloakAuth =
   (import.meta.env.VITE_AUTH_PROVIDER || 'keycloak') === 'keycloak'
@@ -154,10 +151,8 @@ async function handleLogout() {
 
   setIsLoggingOut(true)
 
-  localStorage.removeItem(AUTH_TOKEN_KEY)
-  localStorage.removeItem(AUTH_STATE_KEY)
-  localStorage.removeItem(AUTH_USER_KEY)
-  localStorage.removeItem(LAST_ACTIVITY_KEY)
+localStorage.removeItem(AUTH_STATE_KEY)
+localStorage.removeItem(AUTH_USER_KEY)
 
   setCurrentUser(null)
   setActivePage('dashboard')
