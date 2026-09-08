@@ -32,6 +32,9 @@ server:
 
 fieldsync:
 
+  web:
+    allowed-origin: ${FIELDSYNC_WEB_ORIGIN:http://localhost:5173}
+
   openbao:
     verification-file: ${FIELDSYNC_OPENBAO_VERIFICATION_FILE:../dev-environment/openbao/rendered/verification.txt}
 

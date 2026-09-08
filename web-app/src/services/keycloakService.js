@@ -1,9 +1,18 @@
 import Keycloak from 'keycloak-js'
+import { requireSecureServiceUrl } from './secureUrl'
 
 const keycloak = new Keycloak({
-  url: import.meta.env.VITE_KEYCLOAK_URL || 'http://localhost:8080',
-  realm: import.meta.env.VITE_KEYCLOAK_REALM || 'fieldsync',
-  clientId: import.meta.env.VITE_KEYCLOAK_CLIENT_ID || 'fieldsync-web',
+  url: requireSecureServiceUrl(
+    import.meta.env.VITE_KEYCLOAK_URL ||
+      'http://localhost:8080',
+    'Keycloak URL'
+  ),
+  realm:
+    import.meta.env.VITE_KEYCLOAK_REALM ||
+    'fieldsync',
+  clientId:
+    import.meta.env.VITE_KEYCLOAK_CLIENT_ID ||
+    'fieldsync-web',
 })
 
 let initPromise = null

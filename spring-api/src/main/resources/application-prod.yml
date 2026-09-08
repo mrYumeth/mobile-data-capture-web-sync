@@ -1,0 +1,47 @@
+spring:
+
+  config:
+    import: "configtree:${FIELDSYNC_OPENBAO_CONFIGTREE}"
+
+  datasource:
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    open-in-view: false
+
+    hibernate:
+      ddl-auto: validate
+
+    properties:
+      hibernate:
+        format_sql: false
+
+  flyway:
+    enabled: true
+    locations:
+      - classpath:db/migration
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI}
+
+server:
+  port: ${PORT:8081}
+
+  # Required when HTTPS is terminated by Render/reverse proxy.
+  forward-headers-strategy: framework
+
+fieldsync:
+
+  web:
+    allowed-origin: ${FIELDSYNC_WEB_ORIGIN}
+
+  keycloak:
+
+    admin:
+      base-url: ${FIELDSYNC_KEYCLOAK_ADMIN_BASE_URL}
+      realm: ${FIELDSYNC_KEYCLOAK_ADMIN_REALM:fieldsync}
+      client-id: ${FIELDSYNC_KEYCLOAK_ADMIN_CLIENT_ID:fieldsync-backend-admin}
+      create-temporary-password: ${FIELDSYNC_KEYCLOAK_CREATE_TEMP_PASSWORD:true}

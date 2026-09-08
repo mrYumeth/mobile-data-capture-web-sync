@@ -19,9 +19,20 @@ import org.springframework.http.HttpMethod;
 
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Value;
+
 
 @Configuration
 public class SecurityConfig {
+
+    private final String allowedWebOrigin;
+
+public SecurityConfig(
+        @Value("${fieldsync.web.allowed-origin}")
+        String allowedWebOrigin
+) {
+    this.allowedWebOrigin = allowedWebOrigin;
+}
 
     @Bean
     SecurityFilterChain securityFilterChain(
@@ -72,7 +83,18 @@ public class SecurityConfig {
                     oauth2.jwt(
                         Customizer.withDefaults()
                     )
-            );
+            )
+
+            .headers(
+    headers ->
+        headers.httpStrictTransportSecurity(
+            hsts ->
+                hsts
+                    .includeSubDomains(false)
+                    .preload(false)
+                    .maxAgeInSeconds(31536000)
+        )
+    );
 
         return http.build();
     }
@@ -87,7 +109,7 @@ public class SecurityConfig {
 
         configuration.setAllowedOrigins(
             List.of(
-                "http://localhost:5173"
+                allowedWebOrigin
             )
         );
 

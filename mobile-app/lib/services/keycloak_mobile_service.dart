@@ -17,7 +17,15 @@ class KeycloakMobileService {
       );
 
   static bool get _allowInsecureConnections {
-    return KeycloakConfig.issuer.toLowerCase().startsWith('http://');
+    final uri = Uri.parse(KeycloakConfig.issuer);
+
+    if (uri.scheme.toLowerCase() != 'http') {
+      return false;
+    }
+
+    final host = uri.host.toLowerCase();
+
+    return host == 'localhost' || host == '127.0.0.1' || host == '::1';
   }
 
   Future<TokenResponse?> login() async {
