@@ -36,7 +36,7 @@ auto_auth {
       secret_id_file_path = "/openbao/credentials/secret_id_wrapped"
 
       secret_id_response_wrapping_path =
-        "auth/approle/role/fieldsync-spring/secret-id"
+      "auth/approle/role/fieldsync-spring-prod/secret-id"
 
       # Remove the bootstrap credential immediately after reading it.
       remove_secret_id_file_after_reading = true
