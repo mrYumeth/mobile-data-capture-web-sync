@@ -1,0 +1,16 @@
+# Run by a privileged OpenBao deployment administrator.
+# Never store the administrator token, RoleID, SecretID,
+# or wrapping token in this repository.
+
+bao policy write fieldsync-spring-prod-read \
+  deployment/openbao/policies/fieldsync-spring-prod-read.hcl
+
+bao policy write fieldsync-secretid-issuer \
+  deployment/openbao/policies/fieldsync-secretid-issuer.hcl
+
+bao write auth/approle/role/fieldsync-spring-prod \
+  token_policies="fieldsync-spring-prod-read" \
+  token_ttl="30m" \
+  token_max_ttl="2h" \
+  secret_id_ttl="10m" \
+  secret_id_num_uses=1
