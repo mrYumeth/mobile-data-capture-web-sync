@@ -42,6 +42,7 @@ class AuthService {
     await _secureStorage.delete(key: _tokenKey);
     await _secureStorage.delete(key: _userKey);
     await _secureStorage.delete(key: _refreshTokenKey);
+    await _secureStorage.delete(key: _idTokenKey);
   }
 
   static Future<void> clearAllAppData() async {
