@@ -71,6 +71,13 @@ async function handleCreateUser(event) {
       return
     }
 
+        if (!formData.accessWeb && !formData.accessMobile) {
+      setError(
+        'Select at least one access type: Web app, Mobile app, or both.'
+      )
+      return
+    }
+
     const result = await userApi.create(formData)
 
     setMessage(result.message || 'User created successfully.')
@@ -260,37 +267,44 @@ function handleCancelEdit() {
           >
             <div>
               <label className="mb-2 block text-sm font-semibold">Full Name</label>
-              <input
-                name="fullName"
-                value={formData.fullName}
-                onChange={handleChange}
-                className="form-input"
-                required
-              />
+            <input
+              name="fullName"
+              value={formData.fullName}
+              onChange={handleChange}
+              className="form-input"
+              minLength={2}
+              maxLength={150}
+              required
+            />
             </div>
 
             <div>
               <label className="mb-2 block text-sm font-semibold">Username</label>
-                <input
-                name="username"
-                value={formData.username}
-                onChange={handleChange}
-                className="form-input"
-                disabled={Boolean(editingUserId)}
-                required
-                />
+            <input
+              name="username"
+              value={formData.username}
+              onChange={handleChange}
+              className="form-input"
+              disabled={Boolean(editingUserId)}
+              minLength={3}
+              maxLength={100}
+              pattern="[A-Za-z0-9._-]+"
+              title="Use only letters, numbers, dots, underscores and hyphens"
+              required
+            />
             </div>
 
             <div className="lg:col-span-2">
               <label className="mb-2 block text-sm font-semibold">Email</label>
-              <input
-                name="email"
-                type="email"
-                value={formData.email}
-                onChange={handleChange}
-                className="form-input"
-                required
-              />
+            <input
+              name="email"
+              type="email"
+              value={formData.email}
+              onChange={handleChange}
+              className="form-input"
+              maxLength={150}
+              required
+            />
             </div>
 
             <div className="flex items-center gap-6 lg:col-span-2">

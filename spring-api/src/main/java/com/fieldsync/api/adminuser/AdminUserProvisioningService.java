@@ -25,6 +25,8 @@ import java.security.SecureRandom;
 
 import java.util.Base64;
 
+import com.fieldsync.api.audit.AuditEventWriter;
+
 
 @Service
 public class AdminUserProvisioningService {
@@ -49,6 +51,9 @@ public class AdminUserProvisioningService {
     private final KeycloakAdminClient
         keycloakAdminClient;
 
+    private final AuditEventWriter
+        auditEventWriter;
+
     private final boolean
         createTemporaryPassword;
 
@@ -64,6 +69,8 @@ public class AdminUserProvisioningService {
             TenantContextExecutor tenantContextExecutor,
 
             KeycloakAdminClient keycloakAdminClient,
+
+            AuditEventWriter auditEventWriter,
 
             @Value(
                 "${fieldsync.keycloak.admin.create-temporary-password:true}"
@@ -85,6 +92,9 @@ public class AdminUserProvisioningService {
 
         this.keycloakAdminClient =
             keycloakAdminClient;
+
+        this.auditEventWriter =
+            auditEventWriter;
 
         this.createTemporaryPassword =
             createTemporaryPassword;
@@ -307,12 +317,27 @@ public class AdminUserProvisioningService {
                                 );
 
 
+                        UserEntity savedUser =
+                            userRepository
+                                .saveAndFlush(
+                                    created
+                                );
+
+
+                        auditEventWriter
+                            .recordUserCreated(
+                                tenantId,
+                                currentUser.userId(),
+                                savedUser.getId(),
+                                username,
+                                accessWeb,
+                                accessMobile
+                            );
+
+
                         return AdminUserResponse
                             .from(
-                                userRepository
-                                    .saveAndFlush(
-                                        created
-                                    )
+                                savedUser
                             );
                     }
                 );

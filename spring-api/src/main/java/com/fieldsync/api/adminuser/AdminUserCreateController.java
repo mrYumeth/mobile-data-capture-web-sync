@@ -8,6 +8,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+
+import jakarta.validation.Valid;
 
 import java.util.Map;
 
@@ -32,8 +35,9 @@ public class AdminUserCreateController {
     @PostMapping
     public ResponseEntity<AdminUserCreateResponse>
     createUser(
-            @RequestBody(required = false)
-            AdminUserCreateRequest request
+    @Valid
+    @RequestBody
+    AdminUserCreateRequest request
     ) {
 
         return ResponseEntity
@@ -68,4 +72,37 @@ public class AdminUserCreateController {
                 )
             );
     }
+
+    @ExceptionHandler(
+    MethodArgumentNotValidException.class
+)
+public ResponseEntity<Map<String, String>>
+handleValidationException(
+        MethodArgumentNotValidException exception
+) {
+
+    String message =
+        exception
+            .getBindingResult()
+            .getFieldErrors()
+            .stream()
+            .findFirst()
+            .map(
+                error ->
+                    error.getDefaultMessage()
+            )
+            .orElse(
+                "Invalid user data"
+            );
+
+
+    return ResponseEntity
+        .badRequest()
+        .body(
+            Map.of(
+                "message",
+                message
+            )
+        );
+}
 }

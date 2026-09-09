@@ -14,6 +14,8 @@ import com.fieldsync.api.security.user.CurrentUserService;
 
 import com.fieldsync.api.tenant.TenantContextExecutor;
 
+import com.fieldsync.api.audit.AuditEventWriter;
+
 import org.junit.jupiter.api.Test;
 
 import org.springframework.http.HttpStatus;
@@ -63,6 +65,11 @@ class AdminUserProvisioningServiceTests {
             mock(
                 KeycloakAdminClient.class
             );
+
+        AuditEventWriter auditEventWriter =
+    mock(
+        AuditEventWriter.class
+    );
 
 
         AuthenticatedFieldSyncUser admin =
@@ -207,17 +214,18 @@ class AdminUserProvisioningServiceTests {
             );
 
 
-        AdminUserProvisioningService service =
-            new AdminUserProvisioningService(
+            AdminUserProvisioningService service =
+                new AdminUserProvisioningService(
 
-                userRepository,
-                tenantRepository,
-                currentUserService,
-                tenantContextExecutor,
-                keycloakAdminClient,
+                    userRepository,
+                    tenantRepository,
+                    currentUserService,
+                    tenantContextExecutor,
+                    keycloakAdminClient,
+                    auditEventWriter,
 
-                false
-            );
+                    false
+                );
 
 
         AdminUserApiException exception =
@@ -291,6 +299,11 @@ class AdminUserProvisioningServiceTests {
             mock(
                 KeycloakAdminClient.class
             );
+
+        AuditEventWriter auditEventWriter =
+    mock(
+        AuditEventWriter.class
+    );
 
 
         AuthenticatedFieldSyncUser admin =
@@ -392,6 +405,7 @@ class AdminUserProvisioningServiceTests {
                 currentUserService,
                 tenantContextExecutor,
                 keycloakAdminClient,
+                auditEventWriter,
 
                 false
             );
