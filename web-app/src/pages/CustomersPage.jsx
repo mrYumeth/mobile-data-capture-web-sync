@@ -109,6 +109,8 @@ function CustomersPage() {
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
 
+  const [searchQuery, setSearchQuery] = useState('')
+
   useEffect(() => {
     if (FRONTEND_ONLY) {
       return undefined
@@ -309,6 +311,25 @@ function CustomersPage() {
     }
   }
 
+const filteredCustomers = customers.filter((customer) => {
+  const query = searchQuery.trim().toLowerCase()
+
+  if (!query) {
+    return true
+  }
+
+  return [
+    customer.name,
+    customer.phone,
+    customer.email,
+    customer.address,
+  ].some((value) =>
+    String(value || '')
+      .toLowerCase()
+      .includes(query)
+  )
+}) 
+
   return (
     <div className="space-y-6">
       <div>
@@ -448,6 +469,18 @@ function CustomersPage() {
                 </CardDescription>
               </div>
 
+                          <div className="relative w-full sm:max-w-xs">
+              <Input
+                type="search"
+                placeholder="Search customers..."
+                value={searchQuery}
+                onChange={(event) =>
+                  setSearchQuery(event.target.value)
+                }
+                aria-label="Search customers"
+              />
+            </div>
+
               <Button
                 type="button"
                 variant="outline"
@@ -488,17 +521,19 @@ function CustomersPage() {
                   </TableHeader>
 
                   <TableBody>
-                    {customers.length === 0 ? (
+                    {filteredCustomers.length === 0? (
                       <TableRow>
-                        <TableCell
-                          colSpan={5}
-                          className="h-28 text-center text-muted-foreground"
-                        >
-                          No customers found.
-                        </TableCell>
+                      <TableCell
+                        colSpan={5}
+                        className="h-28 text-center text-muted-foreground"
+                      >
+                        {searchQuery
+                          ? 'No customers match your search.'
+                          : 'No customers found.'}
+                      </TableCell>
                       </TableRow>
                     ) : (
-                      customers.map((customer) => (
+                      filteredCustomers.map((customer) => (
                         <TableRow key={customer.id}>
                           <TableCell className="font-medium">
                             {customer.name}
