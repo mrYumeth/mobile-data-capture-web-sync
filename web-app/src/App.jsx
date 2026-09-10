@@ -77,10 +77,11 @@ const isKeycloakAuth =
   !FRONTEND_ONLY &&
   (import.meta.env.VITE_AUTH_PROVIDER || 'keycloak') === 'keycloak'
 
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme)
-    localStorage.setItem('fieldsync-theme', theme)
-  }, [theme])
+useEffect(() => {
+  document.documentElement.setAttribute('data-theme', theme)
+  document.documentElement.classList.toggle('dark', theme === 'dark')
+  localStorage.setItem('fieldsync-theme', theme)
+}, [theme])
 
   useEffect(() => {
   if (!isAuthenticated || setupToken) {
