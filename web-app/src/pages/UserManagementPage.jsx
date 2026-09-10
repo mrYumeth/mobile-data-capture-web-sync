@@ -109,7 +109,9 @@ const MOCK_USERS = [
 ]
 
 function UserManagementPage() {
-  const [users, setUsers] = useState([])
+const [users, setUsers] = useState(() =>
+  FRONTEND_ONLY ? MOCK_USERS : []
+)
   const [formData, setFormData] = useState({
     fullName: '',
     username: '',
@@ -146,9 +148,31 @@ async function loadUsers() {
   }
 }
 
-  useEffect(() => {
-    loadUsers()
-  }, [])
+useEffect(() => {
+  if (FRONTEND_ONLY) {
+    return undefined
+  }
+
+  let cancelled = false
+
+  userApi
+    .getAll()
+    .then((data) => {
+      if (!cancelled) {
+        setUsers(data)
+        setError('')
+      }
+    })
+    .catch((error) => {
+      if (!cancelled) {
+        setError(error.message || 'Failed to load users.')
+      }
+    })
+
+  return () => {
+    cancelled = true
+  }
+}, [])
 
   function handleChange(event) {
     const { name, value, checked, type } = event.target
