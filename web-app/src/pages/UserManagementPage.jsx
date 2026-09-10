@@ -2,6 +2,112 @@ import { useEffect, useState } from 'react'
 import { userApi } from '../services/api'
 import ChangePasswordPage from './ChangePasswordPage'
 
+import { Button } from '@/components/ui/button'
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from '@/components/ui/alert'
+
+import { Badge } from '@/components/ui/badge'
+
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
+
+const FRONTEND_ONLY =
+  import.meta.env.VITE_FRONTEND_ONLY === 'true'
+
+const MOCK_USERS = [
+  {
+    id: 'mock-admin-1',
+    full_name: 'System Administrator',
+    username: 'admin',
+    email: 'admin@fieldsync.lk',
+    role: 'admin',
+    access_web: true,
+    access_mobile: true,
+    is_active: true,
+    confirmed_at: '2026-08-12T09:30:00Z',
+    keycloak_user_id: 'mock-keycloak-admin',
+  },
+  {
+    id: 'mock-user-1',
+    full_name: 'Nimal Perera',
+    username: 'nimal.perera',
+    email: 'nimal.perera@example.com',
+    role: 'user',
+    access_web: true,
+    access_mobile: true,
+    is_active: true,
+    confirmed_at: '2026-08-21T11:15:00Z',
+    keycloak_user_id: 'mock-keycloak-1',
+  },
+  {
+    id: 'mock-user-2',
+    full_name: 'Sachini Fernando',
+    username: 'sachini.fernando',
+    email: 'sachini.fernando@example.com',
+    role: 'user',
+    access_web: false,
+    access_mobile: true,
+    is_active: true,
+    confirmed_at: '2026-09-01T08:45:00Z',
+    keycloak_user_id: 'mock-keycloak-2',
+  },
+  {
+    id: 'mock-user-3',
+    full_name: 'Kasun Silva',
+    username: 'kasun.silva',
+    email: 'kasun.silva@example.com',
+    role: 'user',
+    access_web: true,
+    access_mobile: false,
+    is_active: false,
+    confirmed_at: null,
+    keycloak_user_id: null,
+  },
+  {
+    id: 'mock-user-4',
+    full_name: 'Amaya Jayasinghe',
+    username: 'amaya.j',
+    email: 'amaya.jayasinghe@example.com',
+    role: 'user',
+    access_web: true,
+    access_mobile: true,
+    is_active: true,
+    confirmed_at: null,
+    keycloak_user_id: null,
+  },
+]
+
 function UserManagementPage() {
   const [users, setUsers] = useState([])
   const [formData, setFormData] = useState({
@@ -25,14 +131,20 @@ const isKeycloakAuth =
 const passwordResetEnabled =
   import.meta.env.VITE_ENABLE_KEYCLOAK_PASSWORD_RESET === 'true'
 
-  async function loadUsers() {
-    try {
-      const data = await userApi.getAll()
-      setUsers(data)
-    } catch (error) {
-      setError(error.message || 'Failed to load users.')
-    }
+async function loadUsers() {
+  if (FRONTEND_ONLY) {
+    setUsers(MOCK_USERS)
+    setError('')
+    return
   }
+
+  try {
+    const data = await userApi.getAll()
+    setUsers(data)
+  } catch (error) {
+    setError(error.message || 'Failed to load users.')
+  }
+}
 
   useEffect(() => {
     loadUsers()
@@ -53,6 +165,64 @@ async function handleCreateUser(event) {
   setMessage('')
   setLastSetupLink('')
   setTemporaryPassword('')
+
+  if (FRONTEND_ONLY) {
+  if (!formData.accessWeb && !formData.accessMobile) {
+    setError(
+      'Select at least one access type: Web app, Mobile app, or both.'
+    )
+    return
+  }
+
+  if (editingUserId) {
+    setUsers((currentUsers) =>
+      currentUsers.map((user) =>
+        user.id === editingUserId
+          ? {
+              ...user,
+              full_name: formData.fullName,
+              email: formData.email,
+              access_web: formData.accessWeb,
+              access_mobile: formData.accessMobile,
+            }
+          : user
+      )
+    )
+
+    setMessage('Preview user updated successfully.')
+    handleCancelEdit()
+    return
+  }
+
+  const mockUser = {
+    id: `mock-user-${Date.now()}`,
+    full_name: formData.fullName,
+    username: formData.username,
+    email: formData.email,
+    role: 'user',
+    access_web: formData.accessWeb,
+    access_mobile: formData.accessMobile,
+    is_active: true,
+    confirmed_at: null,
+    keycloak_user_id: null,
+  }
+
+  setUsers((currentUsers) => [
+    ...currentUsers,
+    mockUser,
+  ])
+
+  setFormData({
+    fullName: '',
+    username: '',
+    email: '',
+    accessWeb: true,
+    accessMobile: false,
+  })
+
+  setMessage('Preview user created successfully.')
+  return
+}
 
   try {
     setIsLoading(true)
@@ -115,13 +285,17 @@ async function handleCreateUser(event) {
 }
 
 async function handleDeleteUser(user) {
-  const confirmed = window.confirm(
-  `Are you sure you want to permanently delete ${user.full_name || user.username}? This action cannot be undone.`
+  if (FRONTEND_ONLY) {
+  setUsers((currentUsers) =>
+    currentUsers.filter(
+      (currentUser) => currentUser.id !== user.id
+    )
   )
 
-  if (!confirmed) {
-    return
-  }
+  setMessage('Preview user deleted.')
+  setError('')
+  return
+}
 
   try {
     setError('')
@@ -173,6 +347,30 @@ function handleCancelEdit() {
 }
 
   async function updateAccess(user, changes) {
+    if (FRONTEND_ONLY) {
+  setUsers((currentUsers) =>
+    currentUsers.map((currentUser) =>
+      currentUser.id === user.id
+        ? {
+            ...currentUser,
+            ...(changes.accessWeb !== undefined && {
+              access_web: changes.accessWeb,
+            }),
+            ...(changes.accessMobile !== undefined && {
+              access_mobile: changes.accessMobile,
+            }),
+            ...(changes.isActive !== undefined && {
+              is_active: changes.isActive,
+            }),
+          }
+        : currentUser
+    )
+  )
+
+  setMessage('Preview user access updated.')
+  setError('')
+  return
+}
     try {
       setError('')
       setMessage('')
@@ -228,83 +426,107 @@ function handleCancelEdit() {
         {activeTab === 'users' && (
         <>
           {error && (
-            <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
-              {error}
-            </div>
+            <Alert variant="destructive" className="mb-5">
+              <AlertTitle>Something went wrong</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
           )}
 
-                    {message && (
-            <div className="mb-5 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-700">
-              {message}
-            </div>
+          {message && (
+            <Alert className="mb-5 border-green-200 bg-green-50 text-green-800 dark:border-green-900 dark:bg-green-950/30 dark:text-green-300">
+              <AlertTitle>Success</AlertTitle>
+              <AlertDescription>{message}</AlertDescription>
+            </Alert>
           )}
 
           {temporaryPassword && (
-            <div className="mb-5 rounded-xl border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
-              <p className="font-bold">Temporary Keycloak Password</p>
-              <p className="mt-1 break-all font-mono text-base">
-                {temporaryPassword}
-              </p>
-              <p className="mt-2">
-                Copy this password and provide it to the user securely. The user will be asked to change it after first login.
-              </p>
-            </div>
+            <Alert className="mb-5 border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+              <AlertTitle>Temporary Keycloak Password</AlertTitle>
+
+              <AlertDescription className="space-y-2">
+                <p className="break-all font-mono text-base">
+                  {temporaryPassword}
+                </p>
+
+                <p>
+                  Copy this password and provide it to the user securely.
+                  The user will be asked to change it after first login.
+                </p>
+              </AlertDescription>
+            </Alert>
           )}
 
           {lastSetupLink && (
-            <div className="mb-5 rounded-xl border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
-              <p className="font-bold">Setup link</p>
-              <p className="mt-1 break-all">{lastSetupLink}</p>
-              <p className="mt-2">
-                Copy this link and send it manually if email is not configured.
-              </p>
-            </div>
+            <Alert className="mb-5 border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+              <AlertTitle>Setup Link</AlertTitle>
+
+              <AlertDescription className="space-y-2">
+                <p className="break-all">
+                  {lastSetupLink}
+                </p>
+
+                <p>
+                  Copy this link and send it manually if email is not configured.
+                </p>
+              </AlertDescription>
+            </Alert>
           )}
 
-          <form
-            onSubmit={handleCreateUser}
-            className="mb-8 grid gap-4 rounded-2xl bg-white p-5 shadow-sm lg:grid-cols-2"
-          >
-            <div>
-              <label className="mb-2 block text-sm font-semibold">Full Name</label>
-            <input
-              name="fullName"
-              value={formData.fullName}
-              onChange={handleChange}
-              className="form-input"
-              minLength={2}
-              maxLength={150}
-              required
-            />
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle>
+                {editingUserId ? 'Edit User' : 'Create User'}
+              </CardTitle>
+            </CardHeader>
+
+            <CardContent>
+              <form
+                onSubmit={handleCreateUser}
+                className="grid gap-5 lg:grid-cols-2"
+              >
+            <div className="space-y-2">
+              <Label htmlFor="fullName">Full Name</Label>
+
+              <Input
+                id="fullName"
+                name="fullName"
+                value={formData.fullName}
+                onChange={handleChange}
+                minLength={2}
+                maxLength={150}
+                required
+              />
             </div>
 
-            <div>
-              <label className="mb-2 block text-sm font-semibold">Username</label>
-            <input
-              name="username"
-              value={formData.username}
-              onChange={handleChange}
-              className="form-input"
-              disabled={Boolean(editingUserId)}
-              minLength={3}
-              maxLength={100}
-              pattern="[A-Za-z0-9._-]+"
-              title="Use only letters, numbers, dots, underscores and hyphens"
-              required
-            />
+            <div className="space-y-2">
+              <Label htmlFor="username">Username</Label>
+
+              <Input
+                id="username"
+                name="username"
+                value={formData.username}
+                onChange={handleChange}
+                disabled={Boolean(editingUserId)}
+                minLength={3}
+                maxLength={100}
+                pattern="[A-Za-z0-9._-]+"
+                title="Use only letters, numbers, dots, underscores and hyphens"
+                required
+              />
             </div>
 
-            <div className="lg:col-span-2">
-              <label className="mb-2 block text-sm font-semibold">Email</label>
-            <input
-              name="email"
-              type="email"
-              value={formData.email}
-              onChange={handleChange}
-              className="form-input"
-              maxLength={150}
-              required
-            />
+            <div className="space-y-2 lg:col-span-2">
+              <Label htmlFor="email">Email</Label>
+
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                value={formData.email}
+                onChange={handleChange}
+                maxLength={150}
+                required
+              />
             </div>
 
             <div className="flex items-center gap-6 lg:col-span-2">
@@ -329,144 +551,250 @@ function handleCancelEdit() {
               </label>
             </div>
                 <div className="flex flex-wrap gap-3 lg:col-span-2">
-                <button type="submit" className="primary-button" disabled={isLoading}>
-                    {isLoading
-                    ? editingUserId
-                        ? 'Updating User...'
-                        : 'Creating User...'
-                    : editingUserId
-                        ? 'Update User'
-                        : 'Create User'}
-                </button>
-
-                {editingUserId && (
-                    <button
-                    type="button"
-                    onClick={handleCancelEdit}
-                    className="rounded-full border border-gray-200 bg-white px-5 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-100"
-                    >
-                    Cancel Edit
-                    </button>
-                )}
+              <Button
+                type="submit"
+                disabled={isLoading}
+              >
+                {isLoading
+                  ? editingUserId
+                    ? 'Updating User...'
+                    : 'Creating User...'
+                  : editingUserId
+                    ? 'Update User'
+                    : 'Create User'}
+              </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleCancelEdit}
+                >
+                  Cancel Edit
+                </Button>
                 </div>
-          </form>
+          </form> 
+         </CardContent>
+         </Card>
 
-          <div className="overflow-x-auto rounded-2xl bg-white shadow-sm">
-            <table className="min-w-full text-left text-sm">
-              <thead className="border-b bg-gray-50 text-gray-600">
-                <tr>
-                  <th className="px-4 py-3">User</th>
-                  <th className="px-4 py-3">Role</th>
-                  <th className="px-4 py-3">Web</th>
-                  <th className="px-4 py-3">Mobile</th>
-                  <th className="px-4 py-3">Active</th>
-                  <th className="px-4 py-3">Confirmed</th>
-                  <th className="px-4 py-3">IAM</th>
-                  <th className="px-4 py-3">Actions</th>
-                </tr>
-              </thead>
+          <Card>
+            <CardHeader>
+              <CardTitle>Users</CardTitle>
+            </CardHeader>
 
-              <tbody>
-                {users.map((user) => (
-                  <tr key={user.id} className="border-b">
-                    <td className="px-4 py-3">
-                      <p className="font-bold">{user.full_name || user.username}</p>
-                      <p className="text-gray-500">{user.email}</p>
-                      <p className="text-xs text-gray-400">@{user.username}</p>
-                    </td>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>User</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead>Web</TableHead>
+                      <TableHead>Mobile</TableHead>
+                      <TableHead>Active</TableHead>
+                      <TableHead>Confirmed</TableHead>
+                      <TableHead>IAM</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
 
-                    <td className="px-4 py-3">{user.role}</td>
+                  <TableBody>
+                    {users.length === 0 ? (
+                      <TableRow>
+                        <TableCell
+                          colSpan={8}
+                          className="h-24 text-center text-muted-foreground"
+                        >
+                          No users found.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      users.map((user) => (
+                        <TableRow key={user.id}>
+                          <TableCell>
+                            <div className="space-y-1">
+                              <p className="font-medium">
+                                {user.full_name || user.username}
+                              </p>
 
-                    <td className="px-4 py-3">
-                      <input
-                        type="checkbox"
-                        checked={Boolean(user.access_web)}
-                        disabled={user.role === 'admin'}
-                        onChange={(event) =>
-                          updateAccess(user, { accessWeb: event.target.checked })
-                        }
-                      />
-                    </td>
+                              <p className="text-sm text-muted-foreground">
+                                {user.email}
+                              </p>
 
-                    <td className="px-4 py-3">
-                      <input
-                        type="checkbox"
-                        checked={Boolean(user.access_mobile)}
-                        disabled={user.role === 'admin'}
-                        onChange={(event) =>
-                          updateAccess(user, { accessMobile: event.target.checked })
-                        }
-                      />
-                    </td>
+                              <p className="text-xs text-muted-foreground">
+                                @{user.username}
+                              </p>
+                            </div>
+                          </TableCell>
 
-                    <td className="px-4 py-3">
-                      <input
-                        type="checkbox"
-                        checked={Boolean(user.is_active)}
-                        disabled={user.role === 'admin'}
-                        onChange={(event) =>
-                          updateAccess(user, { isActive: event.target.checked })
-                        }
-                      />
-                    </td>
-                          <td className="px-4 py-3">
-                            {user.confirmed_at ? 'Yes' : 'Pending'}
-                          </td>
+                          <TableCell>
+                            <Badge variant="secondary">
+                              {user.role}
+                            </Badge>
+                          </TableCell>
 
-                          <td className="px-4 py-3">
+                          <TableCell>
+                            <Checkbox
+                              checked={Boolean(user.access_web)}
+                              disabled={user.role === 'admin'}
+                              aria-label={`Web access for ${
+                                user.full_name || user.username
+                              }`}
+                              onCheckedChange={(checked) =>
+                                updateAccess(user, {
+                                  accessWeb: checked === true,
+                                })
+                              }
+                            />
+                          </TableCell>
+
+                          <TableCell>
+                            <Checkbox
+                              checked={Boolean(user.access_mobile)}
+                              disabled={user.role === 'admin'}
+                              aria-label={`Mobile access for ${
+                                user.full_name || user.username
+                              }`}
+                              onCheckedChange={(checked) =>
+                                updateAccess(user, {
+                                  accessMobile: checked === true,
+                                })
+                              }
+                            />
+                          </TableCell>
+
+                          <TableCell>
+                            <Checkbox
+                              checked={Boolean(user.is_active)}
+                              disabled={user.role === 'admin'}
+                              aria-label={`Active status for ${
+                                user.full_name || user.username
+                              }`}
+                              onCheckedChange={(checked) =>
+                                updateAccess(user, {
+                                  isActive: checked === true,
+                                })
+                              }
+                            />
+                          </TableCell>
+
+                          <TableCell>
+                            {user.confirmed_at ? (
+                              <Badge>Confirmed</Badge>
+                            ) : (
+                              <Badge variant="outline">
+                                Pending
+                              </Badge>
+                            )}
+                          </TableCell>
+
+                          <TableCell>
                             {isKeycloakAuth ? (
                               user.keycloak_user_id ? (
-                                <span className="rounded-full bg-green-50 px-3 py-1 text-xs font-bold text-green-700">
+                                <Badge
+                                  variant="outline"
+                                  className="border-green-300 text-green-700 dark:text-green-400"
+                                >
                                   Linked
-                                </span>
+                                </Badge>
                               ) : (
-                                <span className="rounded-full bg-yellow-50 px-3 py-1 text-xs font-bold text-yellow-700">
+                                <Badge
+                                  variant="outline"
+                                  className="border-amber-300 text-amber-700 dark:text-amber-400"
+                                >
                                   Not linked
-                                </span>
+                                </Badge>
                               )
                             ) : (
-                              <span className="text-xs text-gray-400">Local</span>
+                              <Badge variant="secondary">
+                                Local
+                              </Badge>
                             )}
-                          </td>
+                          </TableCell>
 
-                          <td className="px-4 py-3">
+                          <TableCell>
                             {user.role !== 'admin' ? (
-                              <div className="flex flex-wrap gap-2">
-                            <button
-                                type="button"
-                                onClick={() => handleEditUser(user)}
-                                className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700 hover:bg-blue-100"
-                            >
-                                Edit
-                            </button>
+                              <div className="flex flex-wrap justify-end gap-2">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleEditUser(user)}
+                                >
+                                  Edit
+                                </Button>
 
-                            {passwordResetEnabled && isKeycloakAuth && user.keycloak_user_id && user.is_active && (
-                              <button
-                                type="button"
-                                onClick={() => handleResetKeycloakPassword(user)}
-                                className="rounded-full bg-yellow-50 px-3 py-1 text-xs font-bold text-yellow-700 hover:bg-yellow-100"
-                              >
-                                Reset Password
-                              </button>
+                                {passwordResetEnabled &&
+                                  isKeycloakAuth &&
+                                  user.keycloak_user_id &&
+                                  user.is_active && (
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() =>
+                                        handleResetKeycloakPassword(user)
+                                      }
+                                    >
+                                      Reset Password
+                                    </Button>
+                                  )}
+
+                                    <AlertDialog>
+                                      <AlertDialogTrigger
+                                        render={
+                                          <Button
+                                            type="button"
+                                            variant="destructive"
+                                            size="sm"
+                                          />
+                                        }
+                                      >
+                                        Delete
+                                      </AlertDialogTrigger>
+
+                                      <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                          <AlertDialogTitle>
+                                            Delete user?
+                                          </AlertDialogTitle>
+
+                                          <AlertDialogDescription>
+                                            This will permanently delete{' '}
+                                            <strong>
+                                              {user.full_name || user.username}
+                                            </strong>
+                                            . This action cannot be undone.
+                                          </AlertDialogDescription>
+                                        </AlertDialogHeader>
+
+                                        <AlertDialogFooter>
+                                          <AlertDialogCancel>
+                                            Cancel
+                                          </AlertDialogCancel>
+
+                                          <AlertDialogAction
+                                            variant="destructive"
+                                            onClick={() => handleDeleteUser(user)}
+                                          >
+                                            Delete User
+                                          </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                      </AlertDialogContent>
+                                    </AlertDialog>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">
+                                Protected
+                              </span>
                             )}
-
-                            <button
-                                type="button"
-                                onClick={() => handleDeleteUser(user)}
-                                className="rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-red-700 hover:bg-red-100"
-                            >
-                                Delete
-                            </button>
-                            </div>
-                        ) : (
-                            <span className="text-xs text-gray-400">Protected</span>
-                        )}
-                        </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
         </>
       )}
     </section>
