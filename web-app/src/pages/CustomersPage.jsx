@@ -21,7 +21,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 
 import { Button } from '@/components/ui/button'
@@ -48,6 +47,16 @@ import {
 } from '@/components/ui/table'
 
 import { Textarea } from '@/components/ui/textarea'
+
+import { MoreHorizontal } from 'lucide-react'
+
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 const FRONTEND_ONLY =
   import.meta.env.VITE_FRONTEND_ONLY === 'true'
@@ -110,6 +119,7 @@ function CustomersPage() {
   const [message, setMessage] = useState('')
 
   const [searchQuery, setSearchQuery] = useState('')
+  const [deleteTarget, setDeleteTarget] = useState(null)
 
   useEffect(() => {
     if (FRONTEND_ONLY) {
@@ -565,65 +575,41 @@ const filteredCustomers = customers.filter((customer) => {
                             </span>
                           </TableCell>
 
-                          <TableCell>
-                            <div className="flex justify-end gap-2">
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() =>
-                                  handleEdit(customer)
-                                }
-                              >
-                                Edit
-                              </Button>
+                                        <TableCell>
+                <div className="flex justify-end">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      render={
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          aria-label={`Actions for ${customer.name}`}
+                        />
+                      }
+                    >
+                      <MoreHorizontal className="size-4" />
+                    </DropdownMenuTrigger>
 
-                              <AlertDialog>
-                                <AlertDialogTrigger
-                                  render={
-                                    <Button
-                                      type="button"
-                                      variant="destructive"
-                                      size="sm"
-                                    />
-                                  }
-                                >
-                                  Delete
-                                </AlertDialogTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={() => handleEdit(customer)}
+                      >
+                        Edit Customer
+                      </DropdownMenuItem>
 
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>
-                                      Delete customer?
-                                    </AlertDialogTitle>
+                      <DropdownMenuSeparator />
 
-                                    <AlertDialogDescription>
-                                      This will permanently delete{' '}
-                                      <strong>
-                                        {customer.name}
-                                      </strong>
-                                      . This action cannot be undone.
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>
-                                      Cancel
-                                    </AlertDialogCancel>
-
-                                    <AlertDialogAction
-                                      variant="destructive"
-                                      onClick={() =>
-                                        handleDelete(customer)
-                                      }
-                                    >
-                                      Delete Customer
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                            </div>
-                          </TableCell>
+                      <DropdownMenuItem
+                        className="text-destructive focus:text-destructive"
+                        onClick={() => setDeleteTarget(customer)}
+                      >
+                        Delete Customer
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </TableCell>
                         </TableRow>
                       ))
                     )}
@@ -634,6 +620,48 @@ const filteredCustomers = customers.filter((customer) => {
           </CardContent>
         </Card>
       </div>
+
+      <AlertDialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteTarget(null)
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Delete customer?
+            </AlertDialogTitle>
+
+            <AlertDialogDescription>
+              This will permanently delete{' '}
+              <strong>{deleteTarget?.name}</strong>.
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel>
+              Cancel
+            </AlertDialogCancel>
+
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => {
+                if (deleteTarget) {
+                  handleDelete(deleteTarget)
+                }
+
+                setDeleteTarget(null)
+              }}
+            >
+              Delete Customer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
