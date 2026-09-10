@@ -27,14 +27,15 @@
   --header-muted: #6b7280;
   --nav-hover: rgba(235, 89, 121, 0.1);
   --page-shell-bg: rgba(255, 255, 255, 0.84);
+
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
---primary: #eb5979;
---primary-foreground: #ffffff;
+  --primary: #eb5979;
+  --primary-foreground: #ffffff;
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
@@ -44,7 +45,7 @@
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
---ring: #eb5979;
+  --ring: #eb5979;
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -66,18 +67,22 @@ html[data-theme="dark"] {
     radial-gradient(circle at top left, rgba(235, 89, 121, 0.16), transparent 26%),
     linear-gradient(135deg, #1f2026 0%, #2a2b32 45%, #34353d 100%);
 
-  --header-bg: rgba(45, 46, 54, 0.82);
-  --header-border: rgba(255, 255, 255, 0.16);
+  --header-bg: rgba(35, 35, 40, 0.9);
+  --header-border: rgba(255, 255, 255, 0.12);
   --header-text: #ffffff;
   --header-muted: #d1d5db;
 
-  --nav-hover: rgba(255, 255, 255, 0.1);
+  --nav-hover: rgba(235, 89, 121, 0.12);
 
-  --page-shell-bg: rgba(220, 221, 227, 0.92);
-  --content-shell-bg: rgba(220, 221, 227, 0.92);
-  --content-card-bg: rgba(241, 241, 243, 0.96);
-  --content-card-border: rgba(201, 203, 211, 0.9);
-  --content-table-header: #e6e7eb;
+  /*
+   * Keep the application shell in the same dark family as the
+   * shadcn surfaces instead of using the previous off-white panel.
+   */
+  --page-shell-bg: rgba(24, 24, 27, 0.97);
+  --content-shell-bg: rgba(24, 24, 27, 0.97);
+  --content-card-bg: #27272a;
+  --content-card-border: rgba(255, 255, 255, 0.1);
+  --content-table-header: #202024;
 }
 
 * {
@@ -94,10 +99,10 @@ body,
 
 body {
   margin: 0;
-  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-    sans-serif;
+  font-family: "Geist Variable", system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
   background: var(--page-bg);
-  color: #111111;
+  color: var(--foreground);
   transition: background 0.25s ease;
 }
 
@@ -121,14 +126,15 @@ select {
 
 .page-shell {
   background: var(--content-shell-bg);
-  border: 1px solid rgba(229, 229, 229, 0.55);
+  color: var(--foreground);
+  border: 1px solid var(--content-card-border);
   border-radius: 28px;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.16);
 }
 
 .app-card {
   background: var(--content-card-bg);
-  color: #111111;
+  color: var(--foreground);
   border: 1px solid var(--content-card-border);
   border-radius: 18px;
   box-shadow: 0 18px 45px rgba(0, 0, 0, 0.08);
@@ -220,11 +226,17 @@ select {
   text-shadow: 0 0 18px rgba(235, 89, 121, 0.55);
 }
 
+/*
+ * Dark-mode bridge for the older FieldSync utility classes that are
+ * still used by a few controls in pages such as User Management.
+ */
 html[data-theme="dark"] .bg-white {
   background-color: var(--content-card-bg) !important;
 }
 
-html[data-theme="dark"] .bg-gray-50 {
+html[data-theme="dark"] .bg-gray-50,
+html[data-theme="dark"] .bg-gray-100,
+html[data-theme="dark"] .bg-slate-50 {
   background-color: var(--content-table-header) !important;
 }
 
@@ -233,9 +245,42 @@ html[data-theme="dark"] .border-gray-300 {
   border-color: var(--content-card-border) !important;
 }
 
+html[data-theme="dark"] .text-gray-900,
+html[data-theme="dark"] .text-gray-800,
+html[data-theme="dark"] .text-gray-700 {
+  color: var(--foreground) !important;
+}
+
+html[data-theme="dark"] .text-gray-600,
+html[data-theme="dark"] .text-gray-500 {
+  color: var(--muted-foreground) !important;
+}
+
+/* Pink navigation labels in dark mode, while keeping the active pill readable. */
+html[data-theme="dark"] .nav-link {
+  color: var(--color-pink);
+}
+
+html[data-theme="dark"] .nav-link:hover {
+  color: #ffffff;
+}
+
+html[data-theme="dark"] .nav-link-active {
+  color: #ffffff;
+}
+
+/* Main page names use the FieldSync accent in dark mode. */
+html[data-theme="dark"] .page-shell h1 {
+  color: var(--color-pink);
+}
+
+html[data-theme="dark"] .page-shell > section > div:first-child h2 {
+  color: var(--color-pink);
+}
+
 @theme inline {
   --font-heading: var(--font-sans);
-  --font-sans: 'Geist Variable', sans-serif;
+  --font-sans: "Geist Variable", sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -283,8 +328,8 @@ html[data-theme="dark"] .border-gray-300 {
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
---primary: #eb5979;
---primary-foreground: #ffffff;
+  --primary: #eb5979;
+  --primary-foreground: #ffffff;
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.269 0 0);
@@ -294,7 +339,7 @@ html[data-theme="dark"] .border-gray-300 {
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
---ring: #eb5979;
+  --ring: #eb5979;
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -314,9 +359,11 @@ html[data-theme="dark"] .border-gray-300 {
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }
+
   html {
     @apply font-sans;
   }
