@@ -3,12 +3,14 @@ import { userApi } from '../services/api'
 import ChangePasswordPage from './ChangePasswordPage'
 
 import { Button } from '@/components/ui/button'
+
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -109,9 +111,10 @@ const MOCK_USERS = [
 ]
 
 function UserManagementPage() {
-const [users, setUsers] = useState(() =>
-  FRONTEND_ONLY ? MOCK_USERS : []
-)
+  const [users, setUsers] = useState(() =>
+    FRONTEND_ONLY ? MOCK_USERS : []
+  )
+
   const [formData, setFormData] = useState({
     fullName: '',
     username: '',
@@ -119,6 +122,7 @@ const [users, setUsers] = useState(() =>
     accessWeb: true,
     accessMobile: false,
   })
+
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [lastSetupLink, setLastSetupLink] = useState('')
@@ -127,156 +131,316 @@ const [users, setUsers] = useState(() =>
   const [activeTab, setActiveTab] = useState('users')
   const [editingUserId, setEditingUserId] = useState(null)
 
-const isKeycloakAuth =
-  (import.meta.env.VITE_AUTH_PROVIDER || 'keycloak') === 'keycloak'
+  const isKeycloakAuth =
+    (import.meta.env.VITE_AUTH_PROVIDER || 'keycloak') === 'keycloak'
 
-const passwordResetEnabled =
-  import.meta.env.VITE_ENABLE_KEYCLOAK_PASSWORD_RESET === 'true'
+  const passwordResetEnabled =
+    import.meta.env.VITE_ENABLE_KEYCLOAK_PASSWORD_RESET === 'true'
 
-async function loadUsers() {
-  if (FRONTEND_ONLY) {
-    setUsers(MOCK_USERS)
-    setError('')
-    return
+  async function loadUsers() {
+    if (FRONTEND_ONLY) {
+      setUsers(MOCK_USERS)
+      setError('')
+      return
+    }
+
+    try {
+      const data = await userApi.getAll()
+      setUsers(data)
+    } catch (error) {
+      setError(
+        error.message || 'Failed to load users.'
+      )
+    }
   }
 
-  try {
-    const data = await userApi.getAll()
-    setUsers(data)
-  } catch (error) {
-    setError(error.message || 'Failed to load users.')
-  }
-}
+  useEffect(() => {
+    if (FRONTEND_ONLY) {
+      return undefined
+    }
 
-useEffect(() => {
-  if (FRONTEND_ONLY) {
-    return undefined
-  }
+    let cancelled = false
 
-  let cancelled = false
+    userApi
+      .getAll()
+      .then((data) => {
+        if (!cancelled) {
+          setUsers(data)
+          setError('')
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setError(
+            error.message ||
+              'Failed to load users.'
+          )
+        }
+      })
 
-  userApi
-    .getAll()
-    .then((data) => {
-      if (!cancelled) {
-        setUsers(data)
-        setError('')
-      }
-    })
-    .catch((error) => {
-      if (!cancelled) {
-        setError(error.message || 'Failed to load users.')
-      }
-    })
-
-  return () => {
-    cancelled = true
-  }
-}, [])
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   function handleChange(event) {
-    const { name, value, checked, type } = event.target
+    const {
+      name,
+      value,
+      checked,
+      type,
+    } = event.target
 
     setFormData((current) => ({
       ...current,
-      [name]: type === 'checkbox' ? checked : value,
+      [name]:
+        type === 'checkbox'
+          ? checked
+          : value,
     }))
   }
 
-async function handleCreateUser(event) {
-  event.preventDefault()
-  setError('')
-  setMessage('')
-  setLastSetupLink('')
-  setTemporaryPassword('')
+  async function handleCreateUser(event) {
+    event.preventDefault()
+    setError('')
+    setMessage('')
+    setLastSetupLink('')
+    setTemporaryPassword('')
 
-  if (FRONTEND_ONLY) {
-  if (!formData.accessWeb && !formData.accessMobile) {
-    setError(
-      'Select at least one access type: Web app, Mobile app, or both.'
-    )
-    return
-  }
+    if (FRONTEND_ONLY) {
+      if (
+        !formData.accessWeb &&
+        !formData.accessMobile
+      ) {
+        setError(
+          'Select at least one access type: Web app, Mobile app, or both.'
+        )
+        return
+      }
 
-  if (editingUserId) {
-    setUsers((currentUsers) =>
-      currentUsers.map((user) =>
-        user.id === editingUserId
-          ? {
-              ...user,
-              full_name: formData.fullName,
-              email: formData.email,
-              access_web: formData.accessWeb,
-              access_mobile: formData.accessMobile,
-            }
-          : user
-      )
-    )
+      if (editingUserId) {
+        setUsers((currentUsers) =>
+          currentUsers.map((user) =>
+            user.id === editingUserId
+              ? {
+                  ...user,
+                  full_name:
+                    formData.fullName,
+                  email:
+                    formData.email,
+                  access_web:
+                    formData.accessWeb,
+                  access_mobile:
+                    formData.accessMobile,
+                }
+              : user
+          )
+        )
 
-    setMessage('Preview user updated successfully.')
-    handleCancelEdit()
-    return
-  }
+        setMessage(
+          'Preview user updated successfully.'
+        )
+        handleCancelEdit()
+        return
+      }
 
-  const mockUser = {
-    id: `mock-user-${Date.now()}`,
-    full_name: formData.fullName,
-    username: formData.username,
-    email: formData.email,
-    role: 'user',
-    access_web: formData.accessWeb,
-    access_mobile: formData.accessMobile,
-    is_active: true,
-    confirmed_at: null,
-    keycloak_user_id: null,
-  }
-
-  setUsers((currentUsers) => [
-    ...currentUsers,
-    mockUser,
-  ])
-
-  setFormData({
-    fullName: '',
-    username: '',
-    email: '',
-    accessWeb: true,
-    accessMobile: false,
-  })
-
-  setMessage('Preview user created successfully.')
-  return
-}
-
-  try {
-    setIsLoading(true)
-
-    if (editingUserId) {
-      const result = await userApi.update(editingUserId, {
-        fullName: formData.fullName,
+      const mockUser = {
+        id: `mock-user-${Date.now()}`,
+        full_name: formData.fullName,
+        username: formData.username,
         email: formData.email,
-        accessWeb: formData.accessWeb,
-        accessMobile: formData.accessMobile,
+        role: 'user',
+        access_web: formData.accessWeb,
+        access_mobile:
+          formData.accessMobile,
+        is_active: true,
+        confirmed_at: null,
+        keycloak_user_id: null,
+      }
+
+      setUsers((currentUsers) => [
+        ...currentUsers,
+        mockUser,
+      ])
+
+      setFormData({
+        fullName: '',
+        username: '',
+        email: '',
+        accessWeb: true,
+        accessMobile: false,
       })
 
-      setMessage(result.message || 'User updated successfully.')
-      handleCancelEdit()
-      await loadUsers()
-      return
-    }
-
-        if (!formData.accessWeb && !formData.accessMobile) {
-      setError(
-        'Select at least one access type: Web app, Mobile app, or both.'
+      setMessage(
+        'Preview user created successfully.'
       )
       return
     }
 
-    const result = await userApi.create(formData)
+    try {
+      setIsLoading(true)
 
-    setMessage(result.message || 'User created successfully.')
-    setLastSetupLink(result.setupLink || '')
-    setTemporaryPassword(result.keycloakTemporaryPassword || '')
+      if (editingUserId) {
+        const result =
+          await userApi.update(
+            editingUserId,
+            {
+              fullName:
+                formData.fullName,
+              email:
+                formData.email,
+              accessWeb:
+                formData.accessWeb,
+              accessMobile:
+                formData.accessMobile,
+            }
+          )
+
+        setMessage(
+          result.message ||
+            'User updated successfully.'
+        )
+        handleCancelEdit()
+        await loadUsers()
+        return
+      }
+
+      if (
+        !formData.accessWeb &&
+        !formData.accessMobile
+      ) {
+        setError(
+          'Select at least one access type: Web app, Mobile app, or both.'
+        )
+        return
+      }
+
+      const result =
+        await userApi.create(formData)
+
+      setMessage(
+        result.message ||
+          'User created successfully.'
+      )
+      setLastSetupLink(
+        result.setupLink || ''
+      )
+      setTemporaryPassword(
+        result.keycloakTemporaryPassword || ''
+      )
+
+      setFormData({
+        fullName: '',
+        username: '',
+        email: '',
+        accessWeb: true,
+        accessMobile: false,
+      })
+
+      await loadUsers()
+    } catch (error) {
+      setError(
+        error.message ||
+          'Failed to save user.'
+      )
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  function handleEditUser(user) {
+    setEditingUserId(user.id)
+
+    setFormData({
+      fullName:
+        user.full_name || '',
+      username:
+        user.username || '',
+      email:
+        user.email || '',
+      accessWeb:
+        Boolean(user.access_web),
+      accessMobile:
+        Boolean(user.access_mobile),
+    })
+
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth',
+    })
+  }
+
+  async function handleDeleteUser(user) {
+    if (FRONTEND_ONLY) {
+      setUsers((currentUsers) =>
+        currentUsers.filter(
+          (currentUser) =>
+            currentUser.id !== user.id
+        )
+      )
+
+      setMessage('Preview user deleted.')
+      setError('')
+      return
+    }
+
+    try {
+      setError('')
+      setMessage('')
+
+      const result =
+        await userApi.remove(user.id)
+
+      setMessage(
+        result.message ||
+          'User deleted successfully.'
+      )
+      await loadUsers()
+    } catch (error) {
+      setError(
+        error.message ||
+          'Failed to delete user.'
+      )
+    }
+  }
+
+  async function handleResetKeycloakPassword(user) {
+    const confirmed = window.confirm(
+      `Send an email and request ${user.full_name || user.username} to reset their password?`
+    )
+
+    if (!confirmed) {
+      return
+    }
+
+    try {
+      setError('')
+      setMessage('')
+      setLastSetupLink('')
+      setTemporaryPassword('')
+
+      const result =
+        await userApi.resetKeycloakPassword(
+          user.id
+        )
+
+      setMessage(
+        result.message ||
+          'Temporary password generated successfully.'
+      )
+      setTemporaryPassword(
+        result.keycloakTemporaryPassword || ''
+      )
+    } catch (error) {
+      setError(
+        error.message ||
+          'Failed to reset Keycloak password.'
+      )
+    }
+  }
+
+  function handleCancelEdit() {
+    setEditingUserId(null)
 
     setFormData({
       fullName: '',
@@ -285,126 +449,59 @@ async function handleCreateUser(event) {
       accessWeb: true,
       accessMobile: false,
     })
-
-    await loadUsers()
-  } catch (error) {
-    setError(error.message || 'Failed to save user.')
-  } finally {
-    setIsLoading(false)
   }
-}
-
-  function handleEditUser(user) {
-  setEditingUserId(user.id)
-
-  setFormData({
-    fullName: user.full_name || '',
-    username: user.username || '',
-    email: user.email || '',
-    accessWeb: Boolean(user.access_web),
-    accessMobile: Boolean(user.access_mobile),
-  })
-
-  window.scrollTo({ top: 0, behavior: 'smooth' })
-}
-
-async function handleDeleteUser(user) {
-  if (FRONTEND_ONLY) {
-  setUsers((currentUsers) =>
-    currentUsers.filter(
-      (currentUser) => currentUser.id !== user.id
-    )
-  )
-
-  setMessage('Preview user deleted.')
-  setError('')
-  return
-}
-
-  try {
-    setError('')
-    setMessage('')
-
-    const result = await userApi.remove(user.id)
-
-    setMessage(result.message || 'User deleted successfully.')
-    await loadUsers()
-  } catch (error) {
-    setError(error.message || 'Failed to delete user.')
-  }
-}
-
-async function handleResetKeycloakPassword(user) {
-  const confirmed = window.confirm(
-    `Send an email and request ${user.full_name || user.username} to reset their password?`
-  )
-
-  if (!confirmed) {
-    return
-  }
-
-  try {
-    setError('')
-    setMessage('')
-    setLastSetupLink('')
-    setTemporaryPassword('')
-
-    const result = await userApi.resetKeycloakPassword(user.id)
-
-    setMessage(result.message || 'Temporary password generated successfully.')
-    setTemporaryPassword(result.keycloakTemporaryPassword || '')
-  } catch (error) {
-    setError(error.message || 'Failed to reset Keycloak password.')
-  }
-}
-
-function handleCancelEdit() {
-  setEditingUserId(null)
-
-  setFormData({
-    fullName: '',
-    username: '',
-    email: '',
-    accessWeb: true,
-    accessMobile: false,
-  })
-}
 
   async function updateAccess(user, changes) {
     if (FRONTEND_ONLY) {
-  setUsers((currentUsers) =>
-    currentUsers.map((currentUser) =>
-      currentUser.id === user.id
-        ? {
-            ...currentUser,
-            ...(changes.accessWeb !== undefined && {
-              access_web: changes.accessWeb,
-            }),
-            ...(changes.accessMobile !== undefined && {
-              access_mobile: changes.accessMobile,
-            }),
-            ...(changes.isActive !== undefined && {
-              is_active: changes.isActive,
-            }),
-          }
-        : currentUser
-    )
-  )
+      setUsers((currentUsers) =>
+        currentUsers.map((currentUser) =>
+          currentUser.id === user.id
+            ? {
+                ...currentUser,
+                ...(changes.accessWeb !== undefined && {
+                  access_web:
+                    changes.accessWeb,
+                }),
+                ...(changes.accessMobile !== undefined && {
+                  access_mobile:
+                    changes.accessMobile,
+                }),
+                ...(changes.isActive !== undefined && {
+                  is_active:
+                    changes.isActive,
+                }),
+              }
+            : currentUser
+        )
+      )
 
-  setMessage('Preview user access updated.')
-  setError('')
-  return
-}
+      setMessage(
+        'Preview user access updated.'
+      )
+      setError('')
+      return
+    }
+
     try {
       setError('')
       setMessage('')
 
-      const result = await userApi.updateAccess(user.id, changes)
+      const result =
+        await userApi.updateAccess(
+          user.id,
+          changes
+        )
 
-      setMessage(result.message || 'User access updated.')
+      setMessage(
+        result.message ||
+          'User access updated.'
+      )
       await loadUsers()
     } catch (error) {
-      setError(error.message || 'Failed to update access.')
+      setError(
+        error.message ||
+          'Failed to update access.'
+      )
     }
   }
 
@@ -414,58 +511,94 @@ function handleCancelEdit() {
         <p className="text-sm font-bold uppercase tracking-[0.25em] text-[#EB5979]">
           Admin
         </p>
-        <h2 className="mt-2 text-3xl font-extrabold">Users</h2>
+
+        <h2 className="mt-2 text-3xl font-extrabold">
+          Users
+        </h2>
+
         <p className="mt-2 text-gray-500">
-            Create FieldSync user profiles and assign web or mobile app access. Passwords are managed through Keycloak.
+          Create FieldSync user profiles and assign web or mobile app access. Passwords are managed through Keycloak.
         </p>
       </div>
-        <div className="mb-6 flex flex-wrap gap-3">
-        <button
-            type="button"
-            onClick={() => setActiveTab('users')}
-            className={`rounded-full px-5 py-2 text-sm font-bold transition ${
+
+      <div className="mb-6 flex flex-wrap gap-3">
+        <Button
+          type="button"
+          variant={
             activeTab === 'users'
-                ? 'bg-[#EB5979] text-white shadow-lg shadow-[#EB5979]/30'
-                : 'bg-white text-gray-700 hover:bg-gray-100'
-            }`}
+              ? 'default'
+              : 'outline'
+          }
+          onClick={() =>
+            setActiveTab('users')
+          }
+          className="rounded-full"
+          aria-pressed={
+            activeTab === 'users'
+          }
         >
-            User Management
-        </button>
+          User Management
+        </Button>
+
         {!isKeycloakAuth && (
-          <button
+          <Button
             type="button"
-            onClick={() => setActiveTab('password')}
-            className={`rounded-full px-5 py-2 text-sm font-bold transition ${
+            variant={
               activeTab === 'password'
-                ? 'bg-[#EB5979] text-white shadow-lg shadow-[#EB5979]/30'
-                : 'bg-white text-gray-700 hover:bg-gray-100'
-            }`}
+                ? 'default'
+                : 'outline'
+            }
+            onClick={() =>
+              setActiveTab('password')
+            }
+            className="rounded-full"
+            aria-pressed={
+              activeTab === 'password'
+            }
           >
             Change My Password
-          </button>
+          </Button>
         )}
-        </div>
+      </div>
 
-        {activeTab === 'password' && <ChangePasswordPage />}
-        {activeTab === 'users' && (
+      {activeTab === 'password' && (
+        <ChangePasswordPage />
+      )}
+
+      {activeTab === 'users' && (
         <>
           {error && (
-            <Alert variant="destructive" className="mb-5">
-              <AlertTitle>Something went wrong</AlertTitle>
-              <AlertDescription>{error}</AlertDescription>
+            <Alert
+              variant="destructive"
+              className="mb-5"
+            >
+              <AlertTitle>
+                Something went wrong
+              </AlertTitle>
+
+              <AlertDescription>
+                {error}
+              </AlertDescription>
             </Alert>
           )}
 
           {message && (
             <Alert className="mb-5 border-green-200 bg-green-50 text-green-800 dark:border-green-900 dark:bg-green-950/30 dark:text-green-300">
-              <AlertTitle>Success</AlertTitle>
-              <AlertDescription>{message}</AlertDescription>
+              <AlertTitle>
+                Success
+              </AlertTitle>
+
+              <AlertDescription>
+                {message}
+              </AlertDescription>
             </Alert>
           )}
 
           {temporaryPassword && (
             <Alert className="mb-5 border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
-              <AlertTitle>Temporary Keycloak Password</AlertTitle>
+              <AlertTitle>
+                Temporary Keycloak Password
+              </AlertTitle>
 
               <AlertDescription className="space-y-2">
                 <p className="break-all font-mono text-base">
@@ -482,7 +615,9 @@ function handleCancelEdit() {
 
           {lastSetupLink && (
             <Alert className="mb-5 border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
-              <AlertTitle>Setup Link</AlertTitle>
+              <AlertTitle>
+                Setup Link
+              </AlertTitle>
 
               <AlertDescription className="space-y-2">
                 <p className="break-all">
@@ -499,109 +634,151 @@ function handleCancelEdit() {
           <Card className="mb-8">
             <CardHeader>
               <CardTitle>
-                {editingUserId ? 'Edit User' : 'Create User'}
+                {editingUserId
+                  ? 'Edit User'
+                  : 'Create User'}
               </CardTitle>
             </CardHeader>
 
             <CardContent>
               <form
-                onSubmit={handleCreateUser}
+                onSubmit={
+                  handleCreateUser
+                }
                 className="grid gap-5 lg:grid-cols-2"
               >
-            <div className="space-y-2">
-              <Label htmlFor="fullName">Full Name</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="fullName">
+                    Full Name
+                  </Label>
 
-              <Input
-                id="fullName"
-                name="fullName"
-                value={formData.fullName}
-                onChange={handleChange}
-                minLength={2}
-                maxLength={150}
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
-
-              <Input
-                id="username"
-                name="username"
-                value={formData.username}
-                onChange={handleChange}
-                disabled={Boolean(editingUserId)}
-                minLength={3}
-                maxLength={100}
-                pattern="[A-Za-z0-9._-]+"
-                title="Use only letters, numbers, dots, underscores and hyphens"
-                required
-              />
-            </div>
-
-            <div className="space-y-2 lg:col-span-2">
-              <Label htmlFor="email">Email</Label>
-
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                value={formData.email}
-                onChange={handleChange}
-                maxLength={150}
-                required
-              />
-            </div>
-
-            <div className="flex items-center gap-6 lg:col-span-2">
-              <label className="flex items-center gap-2 text-sm font-semibold">
-                <input
-                  type="checkbox"
-                  name="accessWeb"
-                  checked={formData.accessWeb}
-                  onChange={handleChange}
-                />
-                Web App Access
-              </label>
-
-              <label className="flex items-center gap-2 text-sm font-semibold">
-                <input
-                  type="checkbox"
-                  name="accessMobile"
-                  checked={formData.accessMobile}
-                  onChange={handleChange}
-                />
-                Mobile App Access
-              </label>
-            </div>
-                <div className="flex flex-wrap gap-3 lg:col-span-2">
-              <Button
-                type="submit"
-                disabled={isLoading}
-              >
-                {isLoading
-                  ? editingUserId
-                    ? 'Updating User...'
-                    : 'Creating User...'
-                  : editingUserId
-                    ? 'Update User'
-                    : 'Create User'}
-              </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleCancelEdit}
-                >
-                  Cancel Edit
-                </Button>
+                  <Input
+                    id="fullName"
+                    name="fullName"
+                    value={
+                      formData.fullName
+                    }
+                    onChange={
+                      handleChange
+                    }
+                    minLength={2}
+                    maxLength={150}
+                    required
+                  />
                 </div>
-          </form> 
-         </CardContent>
-         </Card>
+
+                <div className="space-y-2">
+                  <Label htmlFor="username">
+                    Username
+                  </Label>
+
+                  <Input
+                    id="username"
+                    name="username"
+                    value={
+                      formData.username
+                    }
+                    onChange={
+                      handleChange
+                    }
+                    disabled={
+                      Boolean(
+                        editingUserId
+                      )
+                    }
+                    minLength={3}
+                    maxLength={100}
+                    pattern="[A-Za-z0-9._-]+"
+                    title="Use only letters, numbers, dots, underscores and hyphens"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2 lg:col-span-2">
+                  <Label htmlFor="email">
+                    Email
+                  </Label>
+
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    value={
+                      formData.email
+                    }
+                    onChange={
+                      handleChange
+                    }
+                    maxLength={150}
+                    required
+                  />
+                </div>
+
+                <div className="flex items-center gap-6 lg:col-span-2">
+                  <label className="flex items-center gap-2 text-sm font-semibold">
+                    <input
+                      type="checkbox"
+                      name="accessWeb"
+                      checked={
+                        formData.accessWeb
+                      }
+                      onChange={
+                        handleChange
+                      }
+                    />
+                    Web App Access
+                  </label>
+
+                  <label className="flex items-center gap-2 text-sm font-semibold">
+                    <input
+                      type="checkbox"
+                      name="accessMobile"
+                      checked={
+                        formData.accessMobile
+                      }
+                      onChange={
+                        handleChange
+                      }
+                    />
+                    Mobile App Access
+                  </label>
+                </div>
+
+                <div className="flex flex-wrap gap-3 lg:col-span-2">
+                  <Button
+                    type="submit"
+                    disabled={
+                      isLoading
+                    }
+                  >
+                    {isLoading
+                      ? editingUserId
+                        ? 'Updating User...'
+                        : 'Creating User...'
+                      : editingUserId
+                        ? 'Update User'
+                        : 'Create User'}
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={
+                      handleCancelEdit
+                    }
+                  >
+                    Cancel Edit
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle>Users</CardTitle>
+              <CardTitle>
+                Users
+              </CardTitle>
             </CardHeader>
 
             <CardContent className="p-0">
@@ -609,14 +786,37 @@ function handleCancelEdit() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>User</TableHead>
-                      <TableHead>Role</TableHead>
-                      <TableHead>Web</TableHead>
-                      <TableHead>Mobile</TableHead>
-                      <TableHead>Active</TableHead>
-                      <TableHead>Confirmed</TableHead>
-                      <TableHead>IAM</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      <TableHead>
+                        User
+                      </TableHead>
+
+                      <TableHead>
+                        Role
+                      </TableHead>
+
+                      <TableHead>
+                        Web
+                      </TableHead>
+
+                      <TableHead>
+                        Mobile
+                      </TableHead>
+
+                      <TableHead>
+                        Active
+                      </TableHead>
+
+                      <TableHead>
+                        Confirmed
+                      </TableHead>
+
+                      <TableHead>
+                        IAM
+                      </TableHead>
+
+                      <TableHead className="text-right">
+                        Actions
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
 
@@ -632,11 +832,14 @@ function handleCancelEdit() {
                       </TableRow>
                     ) : (
                       users.map((user) => (
-                        <TableRow key={user.id}>
+                        <TableRow
+                          key={user.id}
+                        >
                           <TableCell>
                             <div className="space-y-1">
                               <p className="font-medium">
-                                {user.full_name || user.username}
+                                {user.full_name ||
+                                  user.username}
                               </p>
 
                               <p className="text-sm text-muted-foreground">
@@ -657,52 +860,99 @@ function handleCancelEdit() {
 
                           <TableCell>
                             <Checkbox
-                              checked={Boolean(user.access_web)}
-                              disabled={user.role === 'admin'}
+                              checked={
+                                Boolean(
+                                  user.access_web
+                                )
+                              }
+                              disabled={
+                                user.role ===
+                                'admin'
+                              }
                               aria-label={`Web access for ${
-                                user.full_name || user.username
+                                user.full_name ||
+                                user.username
                               }`}
-                              onCheckedChange={(checked) =>
-                                updateAccess(user, {
-                                  accessWeb: checked === true,
-                                })
+                              onCheckedChange={(
+                                checked
+                              ) =>
+                                updateAccess(
+                                  user,
+                                  {
+                                    accessWeb:
+                                      checked ===
+                                      true,
+                                  }
+                                )
                               }
                             />
                           </TableCell>
 
                           <TableCell>
                             <Checkbox
-                              checked={Boolean(user.access_mobile)}
-                              disabled={user.role === 'admin'}
+                              checked={
+                                Boolean(
+                                  user.access_mobile
+                                )
+                              }
+                              disabled={
+                                user.role ===
+                                'admin'
+                              }
                               aria-label={`Mobile access for ${
-                                user.full_name || user.username
+                                user.full_name ||
+                                user.username
                               }`}
-                              onCheckedChange={(checked) =>
-                                updateAccess(user, {
-                                  accessMobile: checked === true,
-                                })
+                              onCheckedChange={(
+                                checked
+                              ) =>
+                                updateAccess(
+                                  user,
+                                  {
+                                    accessMobile:
+                                      checked ===
+                                      true,
+                                  }
+                                )
                               }
                             />
                           </TableCell>
 
                           <TableCell>
                             <Checkbox
-                              checked={Boolean(user.is_active)}
-                              disabled={user.role === 'admin'}
+                              checked={
+                                Boolean(
+                                  user.is_active
+                                )
+                              }
+                              disabled={
+                                user.role ===
+                                'admin'
+                              }
                               aria-label={`Active status for ${
-                                user.full_name || user.username
+                                user.full_name ||
+                                user.username
                               }`}
-                              onCheckedChange={(checked) =>
-                                updateAccess(user, {
-                                  isActive: checked === true,
-                                })
+                              onCheckedChange={(
+                                checked
+                              ) =>
+                                updateAccess(
+                                  user,
+                                  {
+                                    isActive:
+                                      checked ===
+                                      true,
+                                  }
+                                )
                               }
                             />
                           </TableCell>
 
                           <TableCell>
                             {user.confirmed_at ? (
-                              <Badge>Confirmed</Badge>
+                              <Badge>
+                                Confirmed
+                              </Badge>
                             ) : (
                               <Badge variant="outline">
                                 Pending
@@ -741,7 +991,11 @@ function handleCancelEdit() {
                                   type="button"
                                   variant="outline"
                                   size="sm"
-                                  onClick={() => handleEditUser(user)}
+                                  onClick={() =>
+                                    handleEditUser(
+                                      user
+                                    )
+                                  }
                                 >
                                   Edit
                                 </Button>
@@ -755,55 +1009,62 @@ function handleCancelEdit() {
                                       variant="outline"
                                       size="sm"
                                       onClick={() =>
-                                        handleResetKeycloakPassword(user)
+                                        handleResetKeycloakPassword(
+                                          user
+                                        )
                                       }
                                     >
                                       Reset Password
                                     </Button>
                                   )}
 
-                                    <AlertDialog>
-                                      <AlertDialogTrigger
-                                        render={
-                                          <Button
-                                            type="button"
-                                            variant="destructive"
-                                            size="sm"
-                                          />
+                                <AlertDialog>
+                                  <AlertDialogTrigger
+                                    render={
+                                      <Button
+                                        type="button"
+                                        variant="destructive"
+                                        size="sm"
+                                      />
+                                    }
+                                  >
+                                    Delete
+                                  </AlertDialogTrigger>
+
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>
+                                        Delete user?
+                                      </AlertDialogTitle>
+
+                                      <AlertDialogDescription>
+                                        This will permanently delete{' '}
+                                        <strong>
+                                          {user.full_name ||
+                                            user.username}
+                                        </strong>
+                                        . This action cannot be undone.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>
+                                        Cancel
+                                      </AlertDialogCancel>
+
+                                      <AlertDialogAction
+                                        variant="destructive"
+                                        onClick={() =>
+                                          handleDeleteUser(
+                                            user
+                                          )
                                         }
                                       >
-                                        Delete
-                                      </AlertDialogTrigger>
-
-                                      <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                          <AlertDialogTitle>
-                                            Delete user?
-                                          </AlertDialogTitle>
-
-                                          <AlertDialogDescription>
-                                            This will permanently delete{' '}
-                                            <strong>
-                                              {user.full_name || user.username}
-                                            </strong>
-                                            . This action cannot be undone.
-                                          </AlertDialogDescription>
-                                        </AlertDialogHeader>
-
-                                        <AlertDialogFooter>
-                                          <AlertDialogCancel>
-                                            Cancel
-                                          </AlertDialogCancel>
-
-                                          <AlertDialogAction
-                                            variant="destructive"
-                                            onClick={() => handleDeleteUser(user)}
-                                          >
-                                            Delete User
-                                          </AlertDialogAction>
-                                        </AlertDialogFooter>
-                                      </AlertDialogContent>
-                                    </AlertDialog>
+                                        Delete User
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
                               </div>
                             ) : (
                               <span className="text-xs text-muted-foreground">

@@ -11,6 +11,8 @@ import ChangePasswordPage from './pages/ChangePasswordPage'
 import RegisterTenantPage from './pages/RegisterTenantPage'
 import { logoutFromKeycloak } from './services/keycloakService'
 
+import { Button } from '@/components/ui/button'
+
 const AUTH_STATE_KEY = 'fieldsync-admin-auth'
 const AUTH_USER_KEY = 'fieldsync-auth-user'
 const LAST_ACTIVITY_KEY = 'fieldsync-last-activity'
@@ -46,102 +48,120 @@ function getStoredUser() {
 
 function App() {
   const [activePage, setActivePage] = useState('dashboard')
-
   const [showTenantRegister, setShowTenantRegister] = useState(false)
 
-  const setupToken = new URLSearchParams(window.location.search).get('setupToken')
+  const setupToken =
+    new URLSearchParams(window.location.search).get('setupToken')
 
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem('fieldsync-theme') || 'light'
   })
 
-const [currentUser, setCurrentUser] = useState(() => {
-  if (FRONTEND_ONLY) {
-    return {
-      id: 'frontend-preview',
-      fullName: 'Frontend Preview',
-      username: 'preview-admin',
-      role: 'admin',
+  const [currentUser, setCurrentUser] = useState(() => {
+    if (FRONTEND_ONLY) {
+      return {
+        id: 'frontend-preview',
+        fullName: 'Frontend Preview',
+        username: 'preview-admin',
+        role: 'admin',
+      }
     }
-  }
 
-  return getStoredUser()
-})
+    return getStoredUser()
+  })
 
   const [isLoggingOut, setIsLoggingOut] = useState(false)
 
-const [isAuthenticated, setIsAuthenticated] =
-  useState(FRONTEND_ONLY)
+  const [isAuthenticated, setIsAuthenticated] =
+    useState(FRONTEND_ONLY)
 
-const isKeycloakAuth =
-  !FRONTEND_ONLY &&
-  (import.meta.env.VITE_AUTH_PROVIDER || 'keycloak') === 'keycloak'
-
-useEffect(() => {
-  document.documentElement.setAttribute('data-theme', theme)
-  document.documentElement.classList.toggle('dark', theme === 'dark')
-  localStorage.setItem('fieldsync-theme', theme)
-}, [theme])
+  const isKeycloakAuth =
+    !FRONTEND_ONLY &&
+    (import.meta.env.VITE_AUTH_PROVIDER || 'keycloak') === 'keycloak'
 
   useEffect(() => {
-  if (!isAuthenticated || setupToken) {
-    return undefined
-  }
+    document.documentElement.setAttribute('data-theme', theme)
+    document.documentElement.classList.toggle('dark', theme === 'dark')
+    localStorage.setItem('fieldsync-theme', theme)
+  }, [theme])
 
-  let inactivityTimer
-
-  function logoutDueToInactivity() {
-    handleLogout()
-  }
-
-  function resetInactivityTimer() {
-    localStorage.setItem(LAST_ACTIVITY_KEY, Date.now().toString())
-
-    window.clearTimeout(inactivityTimer)
-
-    inactivityTimer = window.setTimeout(
-      logoutDueToInactivity,
-      INACTIVITY_TIMEOUT_MS
-    )
-  }
-
-  function checkActivityFromOtherTabs() {
-    const lastActivity = Number(localStorage.getItem(LAST_ACTIVITY_KEY))
-
-    if (
-      lastActivity &&
-      Date.now() - lastActivity >= INACTIVITY_TIMEOUT_MS
-    ) {
-      logoutDueToInactivity()
+  useEffect(() => {
+    if (!isAuthenticated || setupToken) {
+      return undefined
     }
-  }
 
-  const activityEvents = [
-    'click',
-    'mousemove',
-    'keydown',
-    'scroll',
-    'touchstart',
-  ]
+    let inactivityTimer
 
-  activityEvents.forEach((eventName) => {
-    window.addEventListener(eventName, resetInactivityTimer, true)
-  })
+    function logoutDueToInactivity() {
+      handleLogout()
+    }
 
-  window.addEventListener('storage', checkActivityFromOtherTabs)
+    function resetInactivityTimer() {
+      localStorage.setItem(
+        LAST_ACTIVITY_KEY,
+        Date.now().toString()
+      )
 
-  resetInactivityTimer()
+      window.clearTimeout(inactivityTimer)
 
-  return () => {
-    window.clearTimeout(inactivityTimer)
+      inactivityTimer = window.setTimeout(
+        logoutDueToInactivity,
+        INACTIVITY_TIMEOUT_MS
+      )
+    }
+
+    function checkActivityFromOtherTabs() {
+      const lastActivity =
+        Number(localStorage.getItem(LAST_ACTIVITY_KEY))
+
+      if (
+        lastActivity &&
+        Date.now() - lastActivity >= INACTIVITY_TIMEOUT_MS
+      ) {
+        logoutDueToInactivity()
+      }
+    }
+
+    const activityEvents = [
+      'click',
+      'mousemove',
+      'keydown',
+      'scroll',
+      'touchstart',
+    ]
 
     activityEvents.forEach((eventName) => {
-      window.removeEventListener(eventName, resetInactivityTimer, true)
+      window.addEventListener(
+        eventName,
+        resetInactivityTimer,
+        true
+      )
     })
 
-    window.removeEventListener('storage', checkActivityFromOtherTabs)
-  }
-}, [isAuthenticated, setupToken])
+    window.addEventListener(
+      'storage',
+      checkActivityFromOtherTabs
+    )
+
+    resetInactivityTimer()
+
+    return () => {
+      window.clearTimeout(inactivityTimer)
+
+      activityEvents.forEach((eventName) => {
+        window.removeEventListener(
+          eventName,
+          resetInactivityTimer,
+          true
+        )
+      })
+
+      window.removeEventListener(
+        'storage',
+        checkActivityFromOtherTabs
+      )
+    }
+  }, [isAuthenticated, setupToken])
 
   function toggleTheme() {
     setTheme((currentTheme) =>
@@ -151,7 +171,10 @@ useEffect(() => {
 
   function handleLogin(user) {
     if (user) {
-      localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user))
+      localStorage.setItem(
+        AUTH_USER_KEY,
+        JSON.stringify(user)
+      )
       setCurrentUser(user)
     }
 
@@ -159,112 +182,129 @@ useEffect(() => {
     setIsAuthenticated(true)
   }
 
-async function handleLogout() {
-  if (FRONTEND_ONLY) {
-  return
-}
-  if (isLoggingOut) {
-    return
-  }
-
-  setIsLoggingOut(true)
-
-localStorage.removeItem(AUTH_STATE_KEY)
-localStorage.removeItem(AUTH_USER_KEY)
-
-  setCurrentUser(null)
-  setActivePage('dashboard')
-
-  if (isKeycloakAuth) {
-    try {
-      await logoutFromKeycloak()
+  async function handleLogout() {
+    if (FRONTEND_ONLY) {
       return
-    } catch (error) {
-      console.error('Keycloak logout failed:', error)
     }
+
+    if (isLoggingOut) {
+      return
+    }
+
+    setIsLoggingOut(true)
+
+    localStorage.removeItem(AUTH_STATE_KEY)
+    localStorage.removeItem(AUTH_USER_KEY)
+
+    setCurrentUser(null)
+    setActivePage('dashboard')
+
+    if (isKeycloakAuth) {
+      try {
+        await logoutFromKeycloak()
+        return
+      } catch (error) {
+        console.error('Keycloak logout failed:', error)
+      }
+    }
+
+    setIsAuthenticated(false)
+    setIsLoggingOut(false)
   }
 
-  setIsAuthenticated(false)
-  setIsLoggingOut(false)
-}
+  if (isLoggingOut) {
+    return (
+      <div className="flex min-h-screen items-center justify-center px-4">
+        <div className="rounded-3xl bg-white/90 px-8 py-6 text-center shadow-2xl">
+          <img
+            src="/logo.png"
+            alt="FieldSync Logo"
+            className="mx-auto mb-4 h-14 w-14 rounded-full object-contain"
+          />
 
-if (isLoggingOut) {
-  return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <div className="rounded-3xl bg-white/90 px-8 py-6 text-center shadow-2xl">
-        <img
-          src="/logo.png"
-          alt="FieldSync Logo"
-          className="mx-auto mb-4 h-14 w-14 rounded-full object-contain"
-        />
-        <h1 className="text-xl font-extrabold text-gray-900">
-          Signing out...
-        </h1>
-        <p className="mt-2 text-sm text-gray-500">
-          Please wait while your FieldSync and Keycloak sessions are closed.
-        </p>
+          <h1 className="text-xl font-extrabold text-gray-900">
+            Signing out...
+          </h1>
+
+          <p className="mt-2 text-sm text-gray-500">
+            Please wait while your FieldSync and Keycloak sessions are closed.
+          </p>
+        </div>
       </div>
-    </div>
-  )
-}
+    )
+  }
 
   if (setupToken && !isKeycloakAuth) {
-  return (
-    <SetupPasswordPage
-      setupToken={setupToken}
-      onBackToLogin={() => {
-        window.history.replaceState({}, document.title, window.location.pathname)
-        setIsAuthenticated(false)
-      }}
-      theme={theme}
-      toggleTheme={toggleTheme}
-    />
-  )
-}
+    return (
+      <SetupPasswordPage
+        setupToken={setupToken}
+        onBackToLogin={() => {
+          window.history.replaceState(
+            {},
+            document.title,
+            window.location.pathname
+          )
+          setIsAuthenticated(false)
+        }}
+        theme={theme}
+        toggleTheme={toggleTheme}
+      />
+    )
+  }
 
-if (!isAuthenticated && showTenantRegister) {
-  return (
-    <RegisterTenantPage
-      onRegisterSuccess={(user) => {
-        handleLogin(user)
-        setShowTenantRegister(false)
-      }}
-      onBackToLogin={() => setShowTenantRegister(false)}
-      theme={theme}
-      toggleTheme={toggleTheme}
-    />
-  )
-}
+  if (!isAuthenticated && showTenantRegister) {
+    return (
+      <RegisterTenantPage
+        onRegisterSuccess={(user) => {
+          handleLogin(user)
+          setShowTenantRegister(false)
+        }}
+        onBackToLogin={() =>
+          setShowTenantRegister(false)
+        }
+        theme={theme}
+        toggleTheme={toggleTheme}
+      />
+    )
+  }
 
-if (!isAuthenticated) {
-  return (
-    <LoginPage
-      onLogin={handleLogin}
-      onShowRegister={() => setShowTenantRegister(true)}
-      theme={theme}
-      toggleTheme={toggleTheme}
-    />
-  )
-}
+  if (!isAuthenticated) {
+    return (
+      <LoginPage
+        onLogin={handleLogin}
+        onShowRegister={() =>
+          setShowTenantRegister(true)
+        }
+        theme={theme}
+        toggleTheme={toggleTheme}
+      />
+    )
+  }
 
   function renderPage() {
     switch (activePage) {
       case 'customers':
         return <CustomersPage />
+
       case 'locations':
         return <LocationsPage />
+
       case 'categories':
         return <CategoriesPage />
+
       case 'capturedRecords':
         return <CapturedRecordsPage />
-          case 'users':
-      return currentUser?.role === 'admin' ? (
-        <UserManagementPage />
-      ) : (
-        <DashboardPage />
-      )
+
+      case 'users':
+        return currentUser?.role === 'admin' ? (
+          <UserManagementPage />
+        ) : (
+          <DashboardPage />
+        )
+
       case 'account':
         return <ChangePasswordPage />
+
       default:
         return <DashboardPage />
     }
@@ -283,74 +323,124 @@ if (!isAuthenticated) {
 
             <div>
               <h1 className="text-2xl font-extrabold tracking-tight">
-                Field<span className="accent-text">Sync</span>
+                Field
+                <span className="accent-text">
+                  Sync
+                </span>
               </h1>
-              <p className="text-sm" style={{ color: 'var(--header-muted)' }}>
+
+              <p
+                className="text-sm"
+                style={{
+                  color: 'var(--header-muted)',
+                }}
+              >
                 Data Capture Platform
               </p>
             </div>
           </div>
 
           <nav className="flex flex-wrap items-center gap-2">
-                {navigation
-                  .filter((item) => {
-                    if (item.adminOnly && currentUser?.role !== 'admin') {
-                      return false
-                    }
+            {navigation
+              .filter((item) => {
+                if (
+                  item.adminOnly &&
+                  currentUser?.role !== 'admin'
+                ) {
+                  return false
+                }
 
-                    if (item.userOnly && currentUser?.role === 'admin') {
-                      return false
-                    }
+                if (
+                  item.userOnly &&
+                  currentUser?.role === 'admin'
+                ) {
+                  return false
+                }
 
-                    if (item.key === 'account' && isKeycloakAuth) {
-                      return false
-                    }
+                if (
+                  item.key === 'account' &&
+                  isKeycloakAuth
+                ) {
+                  return false
+                }
 
-                    return true
-                  })
-                  .map((item) => (
-                <button
-                  key={item.key}
-                  type="button"
-                  onClick={() => setActivePage(item.key)}
-                  className={`nav-link ${
-                    activePage === item.key ? 'nav-link-active' : ''
-                  }`}
-                >
-                  {item.label}
-                </button>
-              ))}
+                return true
+              })
+              .map((item) => {
+                const isActive =
+                  activePage === item.key
+
+                return (
+                  <Button
+                    key={item.key}
+                    type="button"
+                    variant={
+                      isActive
+                        ? 'default'
+                        : 'ghost'
+                    }
+                    onClick={() =>
+                      setActivePage(item.key)
+                    }
+                    className={`nav-link rounded-full ${
+                      isActive
+                        ? 'nav-link-active'
+                        : ''
+                    }`}
+                    aria-current={
+                      isActive
+                        ? 'page'
+                        : undefined
+                    }
+                  >
+                    {item.label}
+                  </Button>
+                )
+              })}
           </nav>
 
           <div className="flex items-center gap-3">
             {currentUser && (
               <div className="hidden text-right text-xs xl:block">
                 <p className="font-semibold">
-                  {currentUser.fullName || currentUser.username}
+                  {currentUser.fullName ||
+                    currentUser.username}
                 </p>
-                <p style={{ color: 'var(--header-muted)' }}>
+
+                <p
+                  style={{
+                    color: 'var(--header-muted)',
+                  }}
+                >
                   {currentUser.role || 'admin'}
                 </p>
               </div>
             )}
 
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="icon"
               onClick={toggleTheme}
-              className="theme-toggle"
+              className="rounded-full border-[var(--header-border)] bg-white/10 text-[var(--header-text)] hover:bg-[var(--nav-hover)] hover:text-[var(--header-text)]"
               title="Toggle light/dark theme"
+              aria-label="Toggle light or dark theme"
             >
               {theme === 'dark' ? '☀' : '☾'}
-            </button>
-            
-            <button
+            </Button>
+
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
               onClick={handleLogout}
               disabled={isLoggingOut}
-              className="hidden rounded-full border border-white/10 px-4 py-2 text-sm font-semibold transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60 xl:block"
+              className="hidden rounded-full border-[var(--header-border)] bg-transparent text-[var(--header-text)] hover:bg-[var(--nav-hover)] hover:text-[var(--header-text)] xl:inline-flex"
             >
-              {isLoggingOut ? 'Signing out...' : 'Logout'}
-            </button>
+              {isLoggingOut
+                ? 'Signing out...'
+                : 'Logout'}
+            </Button>
           </div>
         </div>
       </header>
