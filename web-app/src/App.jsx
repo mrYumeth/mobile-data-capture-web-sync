@@ -16,6 +16,9 @@ const AUTH_USER_KEY = 'fieldsync-auth-user'
 const LAST_ACTIVITY_KEY = 'fieldsync-last-activity'
 const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000
 
+const FRONTEND_ONLY =
+  import.meta.env.VITE_FRONTEND_ONLY === 'true'
+
 const navigation = [
   { key: 'dashboard', label: 'Dashboard' },
   { key: 'customers', label: 'Customers' },
@@ -52,15 +55,26 @@ function App() {
     return localStorage.getItem('fieldsync-theme') || 'light'
   })
 
-  const [currentUser, setCurrentUser] = useState(() => {
-    return getStoredUser()
-  })
+const [currentUser, setCurrentUser] = useState(() => {
+  if (FRONTEND_ONLY) {
+    return {
+      id: 'frontend-preview',
+      fullName: 'Frontend Preview',
+      username: 'preview-admin',
+      role: 'admin',
+    }
+  }
+
+  return getStoredUser()
+})
 
   const [isLoggingOut, setIsLoggingOut] = useState(false)
 
-const [isAuthenticated, setIsAuthenticated] = useState(false)
+const [isAuthenticated, setIsAuthenticated] =
+  useState(FRONTEND_ONLY)
 
-  const isKeycloakAuth =
+const isKeycloakAuth =
+  !FRONTEND_ONLY &&
   (import.meta.env.VITE_AUTH_PROVIDER || 'keycloak') === 'keycloak'
 
   useEffect(() => {
@@ -145,6 +159,9 @@ const [isAuthenticated, setIsAuthenticated] = useState(false)
   }
 
 async function handleLogout() {
+  if (FRONTEND_ONLY) {
+  return
+}
   if (isLoggingOut) {
     return
   }
