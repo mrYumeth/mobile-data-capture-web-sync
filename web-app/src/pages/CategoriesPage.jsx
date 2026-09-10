@@ -1,5 +1,28 @@
-import MasterDataPage from './MasterDataPage';
-import { categoryApi } from '../services/api';
+import MasterDataPage from './MasterDataPage'
+import { categoryApi } from '../services/api'
+
+const PREVIEW_CATEGORIES = [
+  {
+    id: 'mock-category-1',
+    name: 'Site Inspection',
+    description: 'General field inspection records.',
+  },
+  {
+    id: 'mock-category-2',
+    name: 'Inventory Check',
+    description: 'Stock and inventory verification records.',
+  },
+  {
+    id: 'mock-category-3',
+    name: 'Customer Visit',
+    description: 'Customer visit and follow-up records.',
+  },
+  {
+    id: 'mock-category-4',
+    name: 'Maintenance',
+    description: 'Equipment and site maintenance records.',
+  },
+]
 
 function CategoriesPage() {
   return (
@@ -8,6 +31,7 @@ function CategoriesPage() {
       description="Manage capture categories used when recording field data."
       api={categoryApi}
       itemLabel="Category"
+      previewItems={PREVIEW_CATEGORIES}
       emptyForm={{
         name: '',
         description: '',
@@ -35,7 +59,7 @@ function CategoriesPage() {
         },
       ]}
     />
-  );
+  )
 }
 
-export default CategoriesPage;
+export default CategoriesPage
