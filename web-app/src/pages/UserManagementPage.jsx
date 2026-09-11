@@ -532,7 +532,6 @@ function UserManagementPage() {
           onClick={() =>
             setActiveTab('users')
           }
-          className="rounded-full"
           aria-pressed={
             activeTab === 'users'
           }
@@ -551,7 +550,6 @@ function UserManagementPage() {
             onClick={() =>
               setActiveTab('password')
             }
-            className="rounded-full"
             aria-pressed={
               activeTab === 'password'
             }
@@ -601,7 +599,7 @@ function UserManagementPage() {
               </AlertTitle>
 
               <AlertDescription className="space-y-2">
-                <p className="break-all font-mono text-base">
+                <p className="break-all text-base">
                   {temporaryPassword}
                 </p>
 

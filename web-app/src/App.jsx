@@ -215,7 +215,7 @@ function App() {
   if (isLoggingOut) {
     return (
       <div className="flex min-h-screen items-center justify-center px-4">
-        <div className="rounded-3xl bg-white/90 px-8 py-6 text-center shadow-2xl">
+        <div className="rounded-lg bg-white/90 px-8 py-6 text-center shadow-2xl">
           <img
             src="/logo.png"
             alt="FieldSync Logo"
@@ -312,7 +312,7 @@ function App() {
 
   return (
     <div className="min-h-screen px-4 py-4">
-      <header className="glass-header fixed left-1/2 top-4 z-50 w-[calc(100%-2rem)] max-w-7xl -translate-x-1/2 rounded-2xl px-5 py-4">
+      <header className="glass-header fixed left-1/2 top-4 z-50 w-[calc(100%-2rem)] max-w-7xl -translate-x-1/2 rounded-lg px-5 py-4">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div className="flex items-center gap-3">
             <img
@@ -382,7 +382,7 @@ function App() {
                     onClick={() =>
                       setActivePage(item.key)
                     }
-                    className={`nav-link rounded-full ${
+                    className={`nav-link ${
                       isActive
                         ? 'nav-link-active'
                         : ''
@@ -422,7 +422,7 @@ function App() {
               variant="outline"
               size="icon"
               onClick={toggleTheme}
-              className="rounded-full border-[var(--header-border)] bg-white/10 text-[var(--header-text)] hover:bg-[var(--nav-hover)] hover:text-[var(--header-text)]"
+              className="border-[var(--header-border)] bg-white/10 text-[var(--header-text)] hover:bg-[var(--nav-hover)] hover:text-[var(--header-text)]"
               title="Toggle light/dark theme"
               aria-label="Toggle light or dark theme"
             >
@@ -435,7 +435,7 @@ function App() {
               size="sm"
               onClick={handleLogout}
               disabled={isLoggingOut}
-              className="hidden rounded-full border-[var(--header-border)] bg-transparent text-[var(--header-text)] hover:bg-[var(--nav-hover)] hover:text-[var(--header-text)] xl:inline-flex"
+              className="hidden border-[var(--header-border)] bg-transparent text-[var(--header-text)] hover:bg-[var(--nav-hover)] hover:text-[var(--header-text)] xl:inline-flex"
             >
               {isLoggingOut
                 ? 'Signing out...'
