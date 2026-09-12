@@ -314,7 +314,7 @@ function App() {
     <div className="min-h-screen px-4 py-4">
       <header className="glass-header fixed left-1/2 top-4 z-50 w-[calc(100%-2rem)] max-w-7xl -translate-x-1/2 rounded-lg px-5 py-4">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex shrink-0 items-center gap-3">
             <img
               src="/logo.png"
               alt="FieldSync Logo"
@@ -340,7 +340,7 @@ function App() {
             </div>
           </div>
 
-          <nav className="flex flex-wrap items-center gap-2">
+          <nav className="flex min-w-0 flex-1 flex-nowrap items-center justify-center gap-1 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {navigation
               .filter((item) => {
                 if (
@@ -382,11 +382,11 @@ function App() {
                     onClick={() =>
                       setActivePage(item.key)
                     }
-                    className={`nav-link ${
-                      isActive
-                        ? 'nav-link-active'
-                        : ''
-                    }`}
+                    className={`nav-link shrink-0 px-3 ${
+                    isActive
+                      ? 'nav-link-active'
+                      : ''
+                  }`}
                     aria-current={
                       isActive
                         ? 'page'
@@ -399,7 +399,7 @@ function App() {
               })}
           </nav>
 
-          <div className="flex items-center gap-3">
+          <div className="flex shrink-0 items-center gap-2">
             {currentUser && (
               <div className="hidden text-right text-xs xl:block">
                 <p className="font-semibold">

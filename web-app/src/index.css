@@ -355,6 +355,56 @@ html[data-theme="dark"] .page-shell > section > div:first-child h2 {
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+.auth-shell {
+  border: 1px solid var(--content-card-border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--content-shell-bg);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.18);
+}
+
+.auth-left-panel {
+  background: linear-gradient(
+      180deg,
+      rgba(235, 89, 121, 0.12) 0%,
+      rgba(24, 24, 27, 0) 30%
+    ),
+    #23242c;
+  color: #f4f4f5;
+}
+
+.auth-right-panel {
+  background: rgba(255, 255, 255, 0.96);
+  color: #111111;
+}
+
+html[data-theme="dark"] .auth-right-panel {
+  background: #27272a;
+  color: #f4f4f5;
+}
+
+html[data-theme="dark"] .auth-right-panel .text-gray-500,
+html[data-theme="dark"] .auth-right-panel .text-gray-600,
+html[data-theme="dark"] .auth-right-panel .text-gray-700 {
+  color: var(--muted-foreground) !important;
+}
+
+html[data-theme="dark"] .auth-right-panel input {
+  background: #18181b;
+  color: #f4f4f5;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+html[data-theme="dark"] .auth-right-panel input::placeholder {
+  color: #a1a1aa;
+}
+
+html[data-theme="dark"] .auth-right-panel .auth-info-card {
+  background: #18181b;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #f4f4f5;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

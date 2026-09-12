@@ -24,10 +24,10 @@ function LoginPage({
           return
         }
 
-            const token = getKeycloakToken()
-    if (!token) return
+        const token = getKeycloakToken()
+        if (!token) return
 
-    localStorage.setItem('fieldsync-admin-auth', 'true')
+        localStorage.setItem('fieldsync-admin-auth', 'true')
 
         const user =
           await authApi.me()
@@ -57,7 +57,7 @@ function LoginPage({
         {theme === 'dark' ? '☀' : '☾'}
       </button>
 
-      <div className="grid w-full max-w-5xl overflow-hidden rounded-[32px] border border-white/20 bg-white/80 shadow-[0_30px_90px_rgba(0,0,0,0.22)] backdrop-blur-xl lg:grid-cols-[1fr_420px]">
+      <div className="grid w-full max-w-5xl overflow-hidden rounded-[32px] border border-white/20 bg-white/80 shadow-[0_30px_90px_rgba(0,0,0,0.22)] backdrop-blur-xl dark:border-white/10 dark:bg-[#27272A]/95 lg:grid-cols-[1fr_420px]">
         <div className="relative hidden bg-[#2A2B32] p-10 text-white lg:block">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(235,89,121,0.35),transparent_35%)]" />
 
@@ -96,7 +96,7 @@ function LoginPage({
           </div>
         </div>
 
-        <div className="bg-[#F1F1F3] p-8 text-[#111827] sm:p-10">
+        <div className="bg-[#F1F1F3] p-8 text-[#111827] dark:bg-[#27272A] dark:text-[#F4F4F5] sm:p-10">
           <div className="mb-8 text-center lg:hidden">
             <img
               src="/logo.png"
@@ -111,7 +111,7 @@ function LoginPage({
               </span>
             </h1>
 
-            <p className="text-gray-600">
+            <p className="text-gray-600 dark:text-zinc-400">
               Admin Web Console
             </p>
           </div>
@@ -121,17 +121,17 @@ function LoginPage({
               Admin Login
             </p>
 
-            <h2 className="mt-3 text-3xl font-extrabold text-gray-950">
+            <h2 className="mt-3 text-3xl font-extrabold text-gray-950 dark:text-zinc-50">
               Welcome back
             </h2>
 
-            <p className="mt-2 text-gray-600">
+            <p className="mt-2 text-gray-600 dark:text-zinc-400">
               Sign in to access the FieldSync dashboard.
             </p>
           </div>
 
           {error && (
-            <div className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+            <div className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300">
               {error}
             </div>
           )}
@@ -147,13 +147,13 @@ function LoginPage({
               Login
             </button>
 
-            <p className="text-center text-sm text-gray-500">
+            <p className="text-center text-sm text-gray-500 dark:text-zinc-400">
               You will be redirected to the FieldSync IAM login page.
             </p>
           </div>
 
-          <div className="mt-6 rounded-2xl bg-white p-4 text-sm text-gray-600">
-            <p className="font-semibold text-gray-800">
+          <div className="mt-6 rounded-2xl bg-white p-4 text-sm text-gray-600 dark:border dark:border-white/10 dark:bg-[#18181B] dark:text-zinc-400">
+            <p className="font-semibold text-gray-800 dark:text-zinc-100">
               Secure access only
             </p>
 
@@ -163,8 +163,8 @@ function LoginPage({
             </p>
           </div>
 
-          <div className="mt-4 rounded-2xl bg-white p-4 text-sm text-gray-600">
-            <p className="font-semibold text-gray-800">
+          <div className="mt-4 rounded-2xl bg-white p-4 text-sm text-gray-600 dark:border dark:border-white/10 dark:bg-[#18181B] dark:text-zinc-400">
+            <p className="font-semibold text-gray-800 dark:text-zinc-100">
               New company?
             </p>
 
